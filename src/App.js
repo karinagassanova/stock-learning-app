@@ -1,25 +1,44 @@
-import logo from './logo.svg';
-import './App.css';
+import React, { useState } from "react";
+import Signup from "./Signup";
+import Login from "./Login";
 
-function App() {
+export default function App() {
+  const [showLogin, setShowLogin] = useState(false);
+  const [user, setUser] = useState(null);
+
+  const handleSignupSuccess = () => {
+    setShowLogin(true);
+  };
+
+  const handleGoogleLogin = (user) => {
+    setUser(user);
+  };
+
+  const switchToLogin = () => {
+    setShowLogin(true);
+  };
+
+  if (user) {
+    return (
+      <div style={{ padding: 20 }}>
+        <h1>Welcome, {user.email}</h1>
+        <p>You are now logged in!</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div style={{ padding: 20 }}>
+      <h1>Stock Learning App</h1>
+      {!showLogin ? (
+        <Signup 
+          onSignupSuccess={handleSignupSuccess} 
+          onGoogleLogin={handleGoogleLogin}
+          onSwitchToLogin={switchToLogin} 
+        />
+      ) : (
+        <Login onGoogleLogin={handleGoogleLogin} />
+      )}
     </div>
   );
 }
-
-export default App;
