@@ -3,6 +3,8 @@ import { auth, googleProvider } from "./firebase";
 import { createUserWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import logo from "./images/logo.png";
 import "./Auth.css";
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "./firebase";
 
 export default function Signup({ onSignupSuccess, onGoogleLogin, onSwitchToLogin }) {
   const [email, setEmail] = useState("");
@@ -10,23 +12,58 @@ export default function Signup({ onSignupSuccess, onGoogleLogin, onSwitchToLogin
 
   const handleSignup = async () => {
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+  
+      const user = userCredential.user;
+  
+      // Create user document in Firestore
+      await setDoc(doc(db, "users", user.uid), {
+        userId: user.uid,
+        email: user.email,
+        name: "",
+        profilePicture: "",
+        virtualBalance: 100000,
+        totalProfitLoss: 0,
+        createdAt: new Date()
+      });
+  
       alert("Signup successful!");
       if (onSignupSuccess) onSignupSuccess();
     } catch (err) {
       alert(err.message);
     }
-  };
+  };  
 
   const handleGoogleSignup = async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+  
+      // Create or update user document in Firestore
+      await setDoc(
+        doc(db, "users", user.uid),
+        {
+          userId: user.uid,
+          email: user.email,
+          name: user.displayName || "",
+          profilePicture: user.photoURL || "",
+          virtualBalance: 100000,
+          totalProfitLoss: 0,
+          createdAt: new Date()
+        },
+        { merge: true } // prevents overwriting existing data
+      );
+  
       alert("Google Sign-Up successful!");
-      if (onGoogleLogin) onGoogleLogin(result.user);
+      if (onGoogleLogin) onGoogleLogin(user);
     } catch (err) {
       alert(err.message);
     }
-  };
+  };  
 
   return (
     <div className="auth-container">
