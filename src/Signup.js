@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { auth, googleProvider } from "./firebase";
 import { createUserWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import logo from "./images/logo.png";
-import "./Auth.css";
+import "./css/Auth.css";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
 
