@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { auth, googleProvider } from "./firebase";
 import { createUserWithEmailAndPassword, signInWithPopup } from "firebase/auth";
+import logo from "./images/logo.png";
+import "./Auth.css";
 
 export default function Signup({ onSignupSuccess, onGoogleLogin, onSwitchToLogin }) {
   const [email, setEmail] = useState("");
@@ -19,7 +21,7 @@ export default function Signup({ onSignupSuccess, onGoogleLogin, onSwitchToLogin
   const handleGoogleSignup = async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      alert("Google Sign-In successful!");
+      alert("Google Sign-Up successful!");
       if (onGoogleLogin) onGoogleLogin(result.user);
     } catch (err) {
       alert(err.message);
@@ -27,31 +29,39 @@ export default function Signup({ onSignupSuccess, onGoogleLogin, onSwitchToLogin
   };
 
   return (
-    <div>
-      <h2>Sign Up</h2>
-      <input 
-        type="email" 
-        placeholder="Email" 
-        onChange={(e) => setEmail(e.target.value)} 
-      /><br /><br />
-      <input 
-        type="password" 
-        placeholder="Password" 
-        onChange={(e) => setPassword(e.target.value)} 
-      /><br /><br />
-      <button onClick={handleSignup}>Sign Up</button>
-      <hr />
-      <button onClick={handleGoogleSignup}>Continue with Google</button>
+    <div className="auth-container">
+      <div className="auth-card">
+        <img src={logo} alt="KG Logo" className="logo-image" />
 
-      <p style={{ marginTop: 15 }}>
-        Already have an account?{" "}
-        <span 
-          style={{ color: "blue", cursor: "pointer" }} 
-          onClick={onSwitchToLogin}
-        >
-          Log In
-        </span>
-      </p>
+        <h2>Create an account</h2>
+
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
+        <button className="primary-btn" onClick={handleSignup}>
+          Sign Up
+        </button>
+
+        <button className="google-btn" onClick={handleGoogleSignup}>
+          Continue with Google
+        </button>
+
+        <p className="switch-text">
+          Already have an account?{" "}
+          <span onClick={onSwitchToLogin}>Log In</span>
+        </p>
+      </div>
     </div>
   );
 }

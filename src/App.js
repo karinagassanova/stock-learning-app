@@ -18,6 +18,10 @@ export default function App() {
     setShowLogin(true);
   };
 
+  const switchToSignup = () => {
+    setShowLogin(false);
+  };
+
   if (user) {
     return (
       <div style={{ padding: 20 }}>
@@ -28,16 +32,18 @@ export default function App() {
   }
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>Stock Learning App</h1>
+    <div>
       {!showLogin ? (
-        <Signup 
-          onSignupSuccess={handleSignupSuccess} 
+        <Signup
+          onSignupSuccess={handleSignupSuccess}
           onGoogleLogin={handleGoogleLogin}
-          onSwitchToLogin={switchToLogin} 
+          onSwitchToLogin={switchToLogin}
         />
       ) : (
-        <Login onGoogleLogin={handleGoogleLogin} />
+        <Login
+          onGoogleLogin={handleGoogleLogin}
+          onSwitchToSignup={switchToSignup}
+        />
       )}
     </div>
   );
