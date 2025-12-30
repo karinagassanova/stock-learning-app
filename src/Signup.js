@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { auth, googleProvider } from "./firebase";
-import { createUserWithEmailAndPassword, signInWithPopup } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithPopup, signOut } from "firebase/auth";
 import logo from "./images/logo.png";
 import "./css/Auth.css";
 import { doc, setDoc } from "firebase/firestore";
@@ -20,7 +20,10 @@ export default function Signup({ onSignupSuccess, onGoogleLogin, onSwitchToLogin
   
       const user = userCredential.user;
   
-      // Create user document in Firestore
+      // Immediately switch to login page BEFORE any other operations
+      if (onSignupSuccess) onSignupSuccess();
+  
+      // Create user document in Firestore (in background)
       await setDoc(doc(db, "users", user.uid), {
         userId: user.uid,
         email: user.email,
@@ -30,9 +33,9 @@ export default function Signup({ onSignupSuccess, onGoogleLogin, onSwitchToLogin
         totalProfitLoss: 0,
         createdAt: new Date()
       });
-  
-      alert("Signup successful!");
-      if (onSignupSuccess) onSignupSuccess();
+
+      // Sign out the user after switching pages
+      await signOut(auth);
     } catch (err) {
       alert(err.message);
     }
@@ -58,7 +61,6 @@ export default function Signup({ onSignupSuccess, onGoogleLogin, onSwitchToLogin
         { merge: true } // prevents overwriting existing data
       );
   
-      alert("Google Sign-Up successful!");
       if (onGoogleLogin) onGoogleLogin(user);
     } catch (err) {
       alert(err.message);
