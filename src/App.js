@@ -3,16 +3,17 @@ import { auth } from "./firebase";
 import Signup from "./Signup";
 import Login from "./Login";
 import StarterGuide from "./StarterGuide";
+import Lessons from "./Lessons";
 
 export default function App() {
   const [showLogin, setShowLogin] = useState(false);
   const [user, setUser] = useState(null);
   const [isSigningUp, setIsSigningUp] = useState(false);
+  const [currentPage, setCurrentPage] = useState("starterGuide"); // Track current page
 
   // Listen for authentication state changes
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
-      // Don't update user state if we're in the middle of signup
       if (!isSigningUp) {
         setUser(currentUser);
       }
@@ -21,24 +22,18 @@ export default function App() {
   }, [isSigningUp]);
 
   const handleSignupSuccess = () => {
-    // Set flag to prevent auth state changes
     setIsSigningUp(true);
-    // Clear user immediately
     setUser(null);
-    // Switch to login page
     setShowLogin(true);
-    // Reset flag after a moment
     setTimeout(() => setIsSigningUp(false), 1000);
   };
 
   const handleLoginSuccess = () => {
-    // After login, set the user to show StarterGuide
     setIsSigningUp(false);
     setUser(auth.currentUser);
   };
 
   const handleGoogleLogin = (user) => {
-    // Google login goes directly to StarterGuide
     setIsSigningUp(false);
     setUser(user);
   };
@@ -51,9 +46,20 @@ export default function App() {
     setShowLogin(false);
   };
 
-  // If user is logged in, show StarterGuide
+  // Navigation function to switch between pages
+  const navigateTo = (page) => {
+    setCurrentPage(page);
+  };
+
+  // If user is logged in, show the appropriate page
   if (user) {
-    return <StarterGuide />;
+    switch(currentPage) {
+      case "lessons":
+        return <Lessons onNavigate={navigateTo} />;
+      case "starterGuide":
+      default:
+        return <StarterGuide onNavigate={navigateTo} />;
+    }
   }
 
   // If not logged in, show Login or Signup
