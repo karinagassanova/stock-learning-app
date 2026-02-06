@@ -4,18 +4,24 @@ import Signup from "./Signup";
 import Login from "./Login";
 import StarterGuide from "./StarterGuide";
 import Lessons from "./Lessons";
+import LandingPage from "./LandingPage";
 
 export default function App() {
   const [showLogin, setShowLogin] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
+  const [showLanding, setShowLanding] = useState(true);
   const [user, setUser] = useState(null);
   const [isSigningUp, setIsSigningUp] = useState(false);
-  const [currentPage, setCurrentPage] = useState("starterGuide"); // Track current page
+  const [currentPage, setCurrentPage] = useState("starterGuide");
 
   // Listen for authentication state changes
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
       if (!isSigningUp) {
         setUser(currentUser);
+        if (currentUser) {
+          setShowLanding(false);
+        }
       }
     });
     return () => unsubscribe();
@@ -24,6 +30,7 @@ export default function App() {
   const handleSignupSuccess = () => {
     setIsSigningUp(true);
     setUser(null);
+    setShowSignup(false);
     setShowLogin(true);
     setTimeout(() => setIsSigningUp(false), 1000);
   };
@@ -31,25 +38,68 @@ export default function App() {
   const handleLoginSuccess = () => {
     setIsSigningUp(false);
     setUser(auth.currentUser);
+    setShowLogin(false);
+    setShowLanding(false);
   };
 
   const handleGoogleLogin = (user) => {
     setIsSigningUp(false);
     setUser(user);
+    setShowLanding(false);
+  };
+
+  const handleGetStarted = () => {
+    setShowLanding(false);
+    setShowSignup(true);
+    setShowLogin(false);
+  };
+
+  const handleLoginClick = () => {
+    setShowLanding(false);
+    setShowSignup(false);
+    setShowLogin(true);
   };
 
   const switchToLogin = () => {
+    setShowSignup(false);
     setShowLogin(true);
   };
 
   const switchToSignup = () => {
     setShowLogin(false);
+    setShowSignup(true);
   };
 
-  // Navigation function to switch between pages
   const navigateTo = (page) => {
     setCurrentPage(page);
   };
+
+  // Show landing page if not logged in and landing is active
+  if (!user && showLanding) {
+    return <LandingPage onGetStarted={handleGetStarted} onLogin={handleLoginClick} />;
+  }
+
+  // Show signup page
+  if (!user && showSignup) {
+    return (
+      <Signup
+        onSignupSuccess={handleSignupSuccess}
+        onGoogleLogin={handleGoogleLogin}
+        onSwitchToLogin={switchToLogin}
+      />
+    );
+  }
+
+  // Show login page
+  if (!user && showLogin) {
+    return (
+      <Login
+        onLoginSuccess={handleLoginSuccess}
+        onGoogleLogin={handleGoogleLogin}
+        onSwitchToSignup={switchToSignup}
+      />
+    );
+  }
 
   // If user is logged in, show the appropriate page
   if (user) {
@@ -62,22 +112,5 @@ export default function App() {
     }
   }
 
-  // If not logged in, show Login or Signup
-  return (
-    <div>
-      {!showLogin ? (
-        <Signup
-          onSignupSuccess={handleSignupSuccess}
-          onGoogleLogin={handleGoogleLogin}
-          onSwitchToLogin={switchToLogin}
-        />
-      ) : (
-        <Login
-          onLoginSuccess={handleLoginSuccess}
-          onGoogleLogin={handleGoogleLogin}
-          onSwitchToSignup={switchToSignup}
-        />
-      )}
-    </div>
-  );
+  return null;
 }
