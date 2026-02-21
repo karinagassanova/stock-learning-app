@@ -1,6 +1,6 @@
 import React from "react";
-import logo from "./images/logo.png";
-import "./css/LandingPage.css";
+import logo from "../assets/images/logo.png";
+import "../css/LandingPage.css";
 
 export default function LandingPage({ onGetStarted, onLogin }) {
   return (

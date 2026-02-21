@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { auth } from "./firebase";
-import Signup from "./Signup";
-import Login from "./Login";
-import StarterGuide from "./StarterGuide";
-import Lessons from "./Lessons";
-import LandingPage from "./LandingPage";
+import StarterGuide from "./pages/StarterGuide";
+import LandingPage from "./pages/LandingPage";
+import Lessons from "./pages/Lessons";
+import LessonView from "./pages/LessonView";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
 
 export default function App() {
   const [showLogin, setShowLogin] = useState(false);

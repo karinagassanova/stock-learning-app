@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import { auth, googleProvider } from "./firebase";
+import { auth, googleProvider, db } from "../firebase";
 import { createUserWithEmailAndPassword, signInWithPopup, signOut } from "firebase/auth";
-import logo from "./images/logo.png";
-import "./css/Auth.css";
+import logo from "../assets/images/logo.png";
 import { doc, setDoc } from "firebase/firestore";
-import { db } from "./firebase";
+import "../css/Auth.css";
+import "../firebase";
 
 export default function Signup({ onSignupSuccess, onGoogleLogin, onSwitchToLogin }) {
   const [email, setEmail] = useState("");
@@ -20,11 +20,14 @@ export default function Signup({ onSignupSuccess, onGoogleLogin, onSwitchToLogin
   
       const user = userCredential.user;
   
-      // Immediately switch to login page BEFORE any other operations
+      // Sign out IMMEDIATELY to prevent showing starter guide
+      await signOut(auth);
+
+      // Switch to login page right away
       if (onSignupSuccess) onSignupSuccess();
-  
-      // Create user document in Firestore (in background)
-      await setDoc(doc(db, "users", user.uid), {
+
+      // Create user document in Firestore (in background after redirect)
+      setDoc(doc(db, "users", user.uid), {
         userId: user.uid,
         email: user.email,
         name: "",
@@ -32,10 +35,11 @@ export default function Signup({ onSignupSuccess, onGoogleLogin, onSwitchToLogin
         virtualBalance: 100000,
         totalProfitLoss: 0,
         createdAt: new Date()
+      }).catch(err => {
+        console.error("Error creating user data:", err);
       });
 
-      // Sign out the user after switching pages
-      await signOut(auth);
+      alert("Account created successfully! Please login to continue.");
     } catch (err) {
       alert(err.message);
     }
@@ -58,7 +62,7 @@ export default function Signup({ onSignupSuccess, onGoogleLogin, onSwitchToLogin
           totalProfitLoss: 0,
           createdAt: new Date()
         },
-        { merge: true } // prevents overwriting existing data
+        { merge: true }
       );
   
       if (onGoogleLogin) onGoogleLogin(user);

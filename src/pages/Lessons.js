@@ -1,11 +1,14 @@
 import React, { useState } from "react";
-import { auth } from "./firebase";
+import { auth } from "../firebase";
 import { signOut } from "firebase/auth";
-import "./css/Lessons.css";
+import "../css/Lessons.css";
+import { lessonsData } from "../data/lessonsData";
+import LessonView from "./LessonView";
 
 export default function Lessons({ onNavigate }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [selectedLesson, setSelectedLesson] = useState(null);
 
   const handleLogoutClick = () => {
     setShowLogoutConfirm(true);
@@ -31,13 +34,35 @@ export default function Lessons({ onNavigate }) {
     }
   };
 
+  const handleStartLesson = (lessonId) => {
+    const lesson = lessonsData[lessonId];
+    if (lesson) {
+      setSelectedLesson(lesson);
+    }
+  };
+
+  const handleBackToLessons = () => {
+    setSelectedLesson(null);
+  };
+
+  // If a lesson is selected, show the LessonView
+  if (selectedLesson) {
+    return (
+      <LessonView 
+        lesson={selectedLesson}
+        onBack={handleBackToLessons}
+        onNavigate={onNavigate}
+      />
+    );
+  }
+
   const lessons = [
     {
       id: 1,
       title: "Introduction to the Stock Market",
       description: "Understand what stocks are, how the market works, and why people invest",
       difficulty: "Beginner",
-      duration: "15 min",
+      duration: "20 min",
       quizComplete: false
     },
     {
@@ -45,7 +70,7 @@ export default function Lessons({ onNavigate }) {
       title: "How Stock Trading Works",
       description: "Learn about stock exchanges, buying and selling, and market orders",
       difficulty: "Beginner",
-      duration: "20 min",
+      duration: "35 min",
       quizComplete: false
     },
     {
@@ -53,7 +78,7 @@ export default function Lessons({ onNavigate }) {
       title: "Understanding Risk and Diversification",
       description: "Explore investment risk, portfolio diversification, and risk management strategies",
       difficulty: "Beginner",
-      duration: "25 min",
+      duration: "20 min",
       quizComplete: false
     },
     {
@@ -61,7 +86,7 @@ export default function Lessons({ onNavigate }) {
       title: "Reading Stock Charts and Prices",
       description: "Master candlestick charts, price movements, and volume indicators",
       difficulty: "Intermediate",
-      duration: "30 min",
+      duration: "35 min",
       quizComplete: false
     },
     {
@@ -69,7 +94,7 @@ export default function Lessons({ onNavigate }) {
       title: "Fundamental Analysis Basics",
       description: "Analyze company financials, P/E ratios, earnings reports, and balance sheets",
       difficulty: "Intermediate",
-      duration: "35 min",
+      duration: "50 min",
       quizComplete: false
     },
     {
@@ -77,7 +102,7 @@ export default function Lessons({ onNavigate }) {
       title: "Technical Analysis & Indicators",
       description: "Study moving averages, RSI, MACD, and other technical trading tools",
       difficulty: "Intermediate",
-      duration: "40 min",
+      duration: "30 min",
       quizComplete: false
     },
     {
@@ -85,7 +110,7 @@ export default function Lessons({ onNavigate }) {
       title: "Trading Psychology & Discipline",
       description: "Control emotions, avoid common mistakes, and develop a trading mindset",
       difficulty: "Advanced",
-      duration: "30 min",
+      duration: "60 min",
       quizComplete: false
     },
     {
@@ -93,7 +118,7 @@ export default function Lessons({ onNavigate }) {
       title: "Advanced Trading Strategies",
       description: "Learn swing trading, day trading, position trading, and strategy development",
       difficulty: "Advanced",
-      duration: "45 min",
+      duration: "25 min",
       quizComplete: false
     }
   ];
@@ -199,7 +224,10 @@ export default function Lessons({ onNavigate }) {
                 </span>
               </div>
 
-              <button className="start-lesson-btn">
+              <button 
+                className="start-lesson-btn"
+                onClick={() => handleStartLesson(lesson.id)}
+              >
                 Start Lesson
               </button>
             </div>

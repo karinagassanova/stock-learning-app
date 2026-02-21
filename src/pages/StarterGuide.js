@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { auth } from "./firebase";
+import { auth } from "../firebase";
 import { signOut } from "firebase/auth";
-import "./css/StarterGuide.css";
+import "../css/StarterGuide.css";
 
 export default function StarterGuide({ onNavigate }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -46,18 +46,18 @@ export default function StarterGuide({ onNavigate }) {
         </div>
       </header>
 
-     {/* Mobile Menu */}
-{menuOpen && (
-  <div className="mobile-menu">
-    <ul>
-      <li className="active">Starter Guide</li>
-      <li onClick={() => handleMenuClick("lessons")}>Lessons</li>
-      <li>Trading Simulator</li>
-      <li>Profile</li>
-      <li onClick={handleLogoutClick}>Logout</li>
-    </ul>
-  </div>
-)}
+      {/* Mobile Menu */}
+      {menuOpen && (
+        <div className="mobile-menu">
+          <ul>
+            <li className="active" onClick={() => handleMenuClick("starterGuide")}>Starter Guide</li>
+            <li onClick={() => handleMenuClick("lessons")}>Lessons</li>
+            <li>Trading Simulator</li>
+            <li>Profile</li>
+            <li onClick={handleLogoutClick}>Logout</li>
+          </ul>
+        </div>
+      )}
 
       {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (
