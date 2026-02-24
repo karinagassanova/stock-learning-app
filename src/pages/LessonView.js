@@ -2,38 +2,46 @@ import React, { useState } from "react";
 import { auth } from "../firebase";
 import { signOut } from "firebase/auth";
 import "../css/LessonView.css";
+import Quiz from "./Quiz";
 
 export default function LessonView({ lesson, onBack, onNavigate }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showQuiz, setShowQuiz] = useState(false);
 
-  const handleLogoutClick = () => {
-    setShowLogoutConfirm(true);
-    setMenuOpen(false);
-  };
+  // Guard: if lesson is undefined, don't crash
+  if (!lesson) {
+    return (
+      <div style={{ padding: "40px", textAlign: "center" }}>
+        <p>Lesson not found.</p>
+        <button onClick={onBack} style={{ marginTop: "16px", padding: "10px 24px", cursor: "pointer" }}>
+          ← Back to Lessons
+        </button>
+      </div>
+    );
+  }
 
+  const handleLogoutClick = () => { setShowLogoutConfirm(true); setMenuOpen(false); };
+  const handleLogoutCancel = () => setShowLogoutConfirm(false);
   const handleLogoutConfirm = async () => {
-    try {
-      await signOut(auth);
-    } catch (err) {
-      alert("Error logging out: " + err.message);
-    }
+    try { await signOut(auth); } catch (err) { alert("Error logging out: " + err.message); }
   };
+  const handleMenuClick = (page) => { setMenuOpen(false); if (onNavigate) onNavigate(page); };
+  const handleQuizComplete = (score) => { setShowQuiz(false); if (score.passed) onBack(); };
 
-  const handleLogoutCancel = () => {
-    setShowLogoutConfirm(false);
-  };
-
-  const handleMenuClick = (page) => {
-    setMenuOpen(false);
-    if (onNavigate) {
-      onNavigate(page);
-    }
-  };
+  // Show Quiz
+  if (showQuiz) {
+    return (
+      <Quiz
+        lessonId={lesson.id}
+        onBackToLesson={() => setShowQuiz(false)}
+        onQuizComplete={handleQuizComplete}
+      />
+    );
+  }
 
   return (
     <div className="lesson-view-container">
-      {/* Header */}
       <header className="lesson-header">
         <div className="hamburger-menu" onClick={() => setMenuOpen(!menuOpen)}>
           <div className="line"></div>
@@ -46,7 +54,6 @@ export default function LessonView({ lesson, onBack, onNavigate }) {
         </div>
       </header>
 
-      {/* Mobile Menu */}
       {menuOpen && (
         <div className="mobile-menu">
           <ul>
@@ -59,7 +66,6 @@ export default function LessonView({ lesson, onBack, onNavigate }) {
         </div>
       )}
 
-      {/* Logout Modal */}
       {showLogoutConfirm && (
         <div className="modal-overlay" onClick={handleLogoutCancel}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -80,7 +86,6 @@ export default function LessonView({ lesson, onBack, onNavigate }) {
         </div>
       )}
 
-      {/* Lesson Content */}
       <main className="lesson-content-main">
         <button className="back-button" onClick={onBack}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -103,18 +108,14 @@ export default function LessonView({ lesson, onBack, onNavigate }) {
         <h1 className="lesson-main-title">{lesson.title}</h1>
         <p className="lesson-intro">{lesson.description}</p>
 
-        {/* Render lesson content */}
-        <div className="lesson-rich-content">
-          {lesson.content}
-        </div>
+        <div className="lesson-rich-content">{lesson.content}</div>
 
-        {/* Navigation Buttons */}
         <div className="lesson-navigation">
           <button className="nav-btn secondary" onClick={onBack}>
             Back to Lessons
           </button>
-          <button className="nav-btn primary">
-            Take Quiz
+          <button className="nav-btn primary" onClick={() => setShowQuiz(true)}>
+            Take Quiz →
           </button>
         </div>
       </main>

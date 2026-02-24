@@ -3,7 +3,6 @@ import { auth } from "./firebase";
 import StarterGuide from "./pages/StarterGuide";
 import LandingPage from "./pages/LandingPage";
 import Lessons from "./pages/Lessons";
-import LessonView from "./pages/LessonView";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 
