@@ -5,6 +5,7 @@ import LandingPage from "./pages/LandingPage";
 import Lessons from "./pages/Lessons";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import TradingSimulator from "./pages/TradingSimulator";
 
 export default function App() {
   const [showLogin, setShowLogin] = useState(false);
@@ -106,6 +107,8 @@ export default function App() {
     switch(currentPage) {
       case "lessons":
         return <Lessons onNavigate={navigateTo} />;
+        case "simulator":                                        
+        return <TradingSimulator onNavigate={navigateTo} />;    
       case "starterGuide":
       default:
         return <StarterGuide onNavigate={navigateTo} />;

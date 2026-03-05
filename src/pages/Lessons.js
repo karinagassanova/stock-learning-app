@@ -186,7 +186,7 @@ export default function Lessons({ onNavigate }) {
           <ul>
             <li onClick={() => handleMenuClick("starterGuide")}>Starter Guide</li>
             <li className="active">Lessons</li>
-            <li>Trading Simulator</li>
+            <li onClick={() => onNavigate("simulator")}>Trading Simulator</li>
             <li>Profile</li>
             <li onClick={handleLogoutClick}>Logout</li>
           </ul>

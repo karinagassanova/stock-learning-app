@@ -52,7 +52,7 @@ export default function StarterGuide({ onNavigate }) {
           <ul>
             <li className="active" onClick={() => handleMenuClick("starterGuide")}>Starter Guide</li>
             <li onClick={() => handleMenuClick("lessons")}>Lessons</li>
-            <li>Trading Simulator</li>
+            <li onClick={() => onNavigate("simulator")}>Trading Simulator</li>
             <li>Profile</li>
             <li onClick={handleLogoutClick}>Logout</li>
           </ul>
