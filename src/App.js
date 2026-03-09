@@ -6,6 +6,7 @@ import Lessons from "./pages/Lessons";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import TradingSimulator from "./pages/TradingSimulator";
+import Profile from "./pages/Profile";             
 
 export default function App() {
   const [showLogin, setShowLogin] = useState(false);
@@ -15,7 +16,6 @@ export default function App() {
   const [isSigningUp, setIsSigningUp] = useState(false);
   const [currentPage, setCurrentPage] = useState("starterGuide");
 
-  // Listen for authentication state changes
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
       if (!isSigningUp) {
@@ -61,26 +61,23 @@ export default function App() {
     setShowLogin(true);
   };
 
-  const switchToLogin = () => {
-    setShowSignup(false);
-    setShowLogin(true);
+  const switchToLogin  = () => { setShowSignup(false); setShowLogin(true); };
+  const switchToSignup = () => { setShowLogin(false); setShowSignup(true); };
+  const navigateTo     = (page) => {
+    if (page === "landing") {
+      // Handle logout → back to landing
+      setUser(null);
+      setShowLanding(true);
+      setCurrentPage("starterGuide");
+    } else {
+      setCurrentPage(page);
+    }
   };
 
-  const switchToSignup = () => {
-    setShowLogin(false);
-    setShowSignup(true);
-  };
-
-  const navigateTo = (page) => {
-    setCurrentPage(page);
-  };
-
-  // Show landing page if not logged in and landing is active
   if (!user && showLanding) {
     return <LandingPage onGetStarted={handleGetStarted} onLogin={handleLoginClick} />;
   }
 
-  // Show signup page
   if (!user && showSignup) {
     return (
       <Signup
@@ -91,7 +88,6 @@ export default function App() {
     );
   }
 
-  // Show login page
   if (!user && showLogin) {
     return (
       <Login
@@ -102,13 +98,15 @@ export default function App() {
     );
   }
 
-  // If user is logged in, show the appropriate page
   if (user) {
-    switch(currentPage) {
+    switch (currentPage) {
       case "lessons":
         return <Lessons onNavigate={navigateTo} />;
-        case "simulator":                                        
-        return <TradingSimulator onNavigate={navigateTo} />;    
+      case "trading":                                         
+      case "simulator":                                       
+        return <TradingSimulator onNavigate={navigateTo} />;
+      case "profile":                                        
+        return <Profile onNavigate={navigateTo} />;
       case "starterGuide":
       default:
         return <StarterGuide onNavigate={navigateTo} />;

@@ -1,11 +1,33 @@
-import React, { useState } from "react";
-import { auth } from "../firebase";
+import React, { useState, useEffect } from "react";
+import { auth, db } from "../firebase";
 import { signOut } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import "../css/StarterGuide.css";
+import "../css/NavMenu.css";
 
 export default function StarterGuide({ onNavigate }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [menuPhoto, setMenuPhoto] = useState(null);
+  const [menuAvatarColor, setMenuAvatarColor] = useState("#8fb9a8");
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setCurrentUser(user);
+      if (user) {
+        try {
+          const snap = await getDoc(doc(db, "profiles", user.uid));
+          if (snap.exists()) {
+            setMenuPhoto(snap.data().photoData || null);
+            setMenuAvatarColor(snap.data().avatarColor || "#8fb9a8");
+          }
+        } catch (e) { /* silent */ }
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   const handleLogoutClick = () => {
     setShowLogoutConfirm(true);
@@ -15,6 +37,7 @@ export default function StarterGuide({ onNavigate }) {
   const handleLogoutConfirm = async () => {
     try {
       await signOut(auth);
+      if (onNavigate) onNavigate("landing");
     } catch (err) {
       alert("Error logging out: " + err.message);
     }
@@ -26,9 +49,7 @@ export default function StarterGuide({ onNavigate }) {
 
   const handleMenuClick = (page) => {
     setMenuOpen(false);
-    if (onNavigate) {
-      onNavigate(page);
-    }
+    if (onNavigate) onNavigate(page);
   };
 
   return (
@@ -49,11 +70,22 @@ export default function StarterGuide({ onNavigate }) {
       {/* Mobile Menu */}
       {menuOpen && (
         <div className="mobile-menu">
+          <div className="menu-user-info">
+            <div className="menu-avatar" style={{ background: menuPhoto ? "transparent" : menuAvatarColor }}>
+              {menuPhoto
+                ? <img src={menuPhoto} alt="avatar" />
+                : <span>{(currentUser?.displayName?.[0] || currentUser?.email?.[0] || "U").toUpperCase()}</span>}
+            </div>
+            <div className="menu-user-text">
+              <p className="menu-user-name">{currentUser?.displayName || "Trader"}</p>
+              <p className="menu-user-email">{currentUser?.email}</p>
+            </div>
+          </div>
           <ul>
             <li className="active" onClick={() => handleMenuClick("starterGuide")}>Starter Guide</li>
             <li onClick={() => handleMenuClick("lessons")}>Lessons</li>
-            <li onClick={() => onNavigate("simulator")}>Trading Simulator</li>
-            <li>Profile</li>
+            <li onClick={() => handleMenuClick("trading")}>Trading Simulator</li>
+            <li onClick={() => handleMenuClick("profile")}>Profile</li>
             <li onClick={handleLogoutClick}>Logout</li>
           </ul>
         </div>
@@ -73,12 +105,8 @@ export default function StarterGuide({ onNavigate }) {
             <h3>Logout Confirmation</h3>
             <p>Are you sure you want to logout?</p>
             <div className="modal-buttons">
-              <button className="cancel-btn" onClick={handleLogoutCancel}>
-                Cancel
-              </button>
-              <button className="confirm-btn" onClick={handleLogoutConfirm}>
-                Yes, Logout
-              </button>
+              <button className="cancel-btn" onClick={handleLogoutCancel}>Cancel</button>
+              <button className="confirm-btn" onClick={handleLogoutConfirm}>Yes, Logout</button>
             </div>
           </div>
         </div>

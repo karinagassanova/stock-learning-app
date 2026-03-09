@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { auth, db } from "../firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import {
   doc, getDoc, setDoc, collection, getDocs,
   query, where, serverTimestamp,
@@ -12,8 +12,10 @@ import {
 } from "recharts";
 import { fetchSnapshot, fetchBars } from "../services/alpaca";
 import "../css/TradingSimulator.css";
+import "../css/NavMenu.css";
 
 const STARTING_BALANCE = 10000;
+const TOPUP_AMOUNTS = [1000, 2500, 5000, 10000];
 
 const POPULAR = [
   { symbol: "AAPL", name: "Apple Inc." },
@@ -31,7 +33,6 @@ const POPULAR = [
 const fmt  = (n) => (n ?? 0).toFixed(2);
 const fmtV = (n) => n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}K` : String(n);
 
-// Custom tooltip for price chart
 const PriceTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
@@ -55,6 +56,7 @@ const VolumeTooltip = ({ active, payload, label }) => {
 export default function TradingSimulator({ onNavigate }) {
   const [currentUser, setCurrentUser]     = useState(null);
   const [balance, setBalance]             = useState(null);
+  const [totalDeposited, setTotalDeposited] = useState(STARTING_BALANCE);
   const [holdings, setHoldings]           = useState([]);
   const [transactions, setTransactions]   = useState([]);
   const [loading, setLoading]             = useState(true);
@@ -70,10 +72,30 @@ export default function TradingSimulator({ onNavigate }) {
   const [activeTab, setActiveTab]         = useState("trade");
   const [chartView, setChartView]         = useState("price");
   const [menuOpen, setMenuOpen]           = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [menuPhoto, setMenuPhoto]         = useState(null);
+  const [menuAvatarColor, setMenuAvatarColor] = useState("#8fb9a8");
+
+  // Top-up state
+  const [topupAmount, setTopupAmount]     = useState(1000);
+  const [topupMsg, setTopupMsg]           = useState(null);
+  const [topupLoading, setTopupLoading]   = useState(false);
+  const [showTopup, setShowTopup]         = useState(false);
 
   // ── Auth ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    return onAuthStateChanged(auth, (u) => setCurrentUser(u));
+    return onAuthStateChanged(auth, async (u) => {
+      setCurrentUser(u);
+      if (u) {
+        try {
+          const snap = await getDoc(doc(db, "profiles", u.uid));
+          if (snap.exists()) {
+            setMenuPhoto(snap.data().photoData || null);
+            setMenuAvatarColor(snap.data().avatarColor || "#8fb9a8");
+          }
+        } catch (e) { /* silent */ }
+      }
+    });
   }, []);
 
   // ── Load portfolio ─────────────────────────────────────────────────────
@@ -83,15 +105,23 @@ export default function TradingSimulator({ onNavigate }) {
     try {
       const balSnap = await getDoc(doc(db, "portfolios", user.uid));
       if (balSnap.exists()) {
-        setBalance(balSnap.data().balance);
+        const data = balSnap.data();
+        setBalance(data.balance);
+        setTotalDeposited(data.totalDeposited || STARTING_BALANCE);
       } else {
         await setDoc(doc(db, "portfolios", user.uid), {
-          userId: user.uid, balance: STARTING_BALANCE, createdAt: serverTimestamp(),
+          userId: user.uid,
+          balance: STARTING_BALANCE,
+          totalDeposited: STARTING_BALANCE,
+          createdAt: serverTimestamp(),
         });
         setBalance(STARTING_BALANCE);
+        setTotalDeposited(STARTING_BALANCE);
       }
+
       const hSnap = await getDocs(query(collection(db, "holdings"), where("userId", "==", user.uid)));
       setHoldings(hSnap.docs.map((d) => d.data()));
+
       const tSnap = await getDocs(query(collection(db, "transactions"), where("userId", "==", user.uid)));
       const txs = tSnap.docs.map((d) => d.data())
         .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
@@ -104,6 +134,18 @@ export default function TradingSimulator({ onNavigate }) {
   }, []);
 
   useEffect(() => { if (currentUser) loadPortfolio(currentUser); }, [currentUser, loadPortfolio]);
+
+  // ── Logout ─────────────────────────────────────────────────────────────
+  const handleLogoutClick = () => { setShowLogoutConfirm(true); setMenuOpen(false); };
+  const handleLogoutCancel = () => setShowLogoutConfirm(false);
+  const handleLogoutConfirm = async () => {
+    try {
+      await signOut(auth);
+      if (onNavigate) onNavigate("landing");
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
+  };
 
   // ── Load stock ─────────────────────────────────────────────────────────
   const handleLoadStock = async (sym) => {
@@ -123,6 +165,47 @@ export default function TradingSimulator({ onNavigate }) {
     setStock(snapshot);
     setBars(Array.isArray(candleBars) ? candleBars : []);
     setTickerInput(symbol);
+  };
+
+  // ── Top Up ─────────────────────────────────────────────────────────────
+  const handleTopUp = async () => {
+    const user = auth.currentUser;
+    if (!user || topupLoading) return;
+    setTopupLoading(true);
+    setTopupMsg(null);
+    try {
+      const newBalance   = parseFloat((balance + topupAmount).toFixed(2));
+      const newDeposited = parseFloat((totalDeposited + topupAmount).toFixed(2));
+
+      await setDoc(doc(db, "portfolios", user.uid), {
+        balance: newBalance,
+        totalDeposited: newDeposited,
+      }, { merge: true });
+
+      await setDoc(doc(db, "transactions", `${user.uid}_topup_${Date.now()}`), {
+        userId: user.uid,
+        type: "topup",
+        symbol: "—",
+        name: "Virtual Balance Top Up",
+        shares: 0,
+        price: 0,
+        total: topupAmount,
+        createdAt: serverTimestamp(),
+      });
+
+      setBalance(newBalance);
+      setTotalDeposited(newDeposited);
+      setTopupMsg({ type: "success", text: `✓ €${topupAmount.toLocaleString()} added to your balance!` });
+      setShowTopup(false);
+      setTransactions((prev) => [{
+        type: "topup", symbol: "—", name: "Virtual Balance Top Up",
+        shares: 0, price: 0, total: topupAmount, createdAt: null,
+      }, ...prev].slice(0, 30));
+    } catch (err) {
+      setTopupMsg({ type: "error", text: "Top up failed. Please try again." });
+    } finally {
+      setTopupLoading(false);
+    }
   };
 
   // ── Trade ──────────────────────────────────────────────────────────────
@@ -184,21 +267,22 @@ export default function TradingSimulator({ onNavigate }) {
   };
 
   // ── Derived ────────────────────────────────────────────────────────────
-  const activeHoldings  = holdings.filter((h) => h.shares > 0);
-  const invested        = activeHoldings.reduce((s, h) => s + h.avgBuyPrice * h.shares, 0);
-  const portfolioValue  = (balance || 0) + invested;
-  const totalReturn     = portfolioValue - STARTING_BALANCE;
-  const sharesNum       = parseFloat(shares) || 0;
-  const tradeCost       = stock ? sharesNum * stock.price : 0;
-  const myHolding       = stock ? holdings.find((h) => h.symbol === stock.symbol && h.shares > 0) : null;
+  const activeHoldings = holdings.filter((h) => h.shares > 0);
+  const invested       = activeHoldings.reduce((s, h) => s + h.avgBuyPrice * h.shares, 0);
+  const portfolioValue = (balance || 0) + invested;
 
-  const isUp        = bars.length > 1 && bars[bars.length - 1].close >= bars[0].close;
-  const chartColor  = isUp ? "#00c087" : "#ff5252";
-  const chartMin    = bars.length ? Math.min(...bars.map((b) => b.close)) * 0.98 : 0;
-  const chartMax    = bars.length ? Math.max(...bars.map((b) => b.close)) * 1.02 : 0;
-  const returnPct   = ((totalReturn / STARTING_BALANCE) * 100).toFixed(2);
+  // P&L only reflects trading gains/losses — not top-up deposits
+  const totalReturn    = portfolioValue - totalDeposited;
+  const returnPct      = totalDeposited > 0 ? ((totalReturn / totalDeposited) * 100).toFixed(2) : "0.00";
 
-  const handleMenuClick = (page) => { setMenuOpen(false); if (onNavigate) onNavigate(page); };
+  const sharesNum  = parseFloat(shares) || 0;
+  const tradeCost  = stock ? sharesNum * stock.price : 0;
+  const myHolding  = stock ? holdings.find((h) => h.symbol === stock.symbol && h.shares > 0) : null;
+
+  const isUp       = bars.length > 1 && bars[bars.length - 1].close >= bars[0].close;
+  const chartColor = isUp ? "#27ae60" : "#e74c3c";
+  const chartMin   = bars.length ? Math.min(...bars.map((b) => b.close)) * 0.98 : 0;
+  const chartMax   = bars.length ? Math.max(...bars.map((b) => b.close)) * 1.02 : 0;
 
   if (loading) {
     return (
@@ -212,9 +296,14 @@ export default function TradingSimulator({ onNavigate }) {
     <div className="sim-wrap">
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <header className="sim-header">
-        <div className="header-brand" onClick={() => setMenuOpen(!menuOpen)}>
-          <div className="burger"><span/><span/><span/></div>
-          <div className="brand-text"><h1>K.G</h1><p>Learn Trade Grow</p></div>
+        <div className="hamburger-menu" onClick={() => setMenuOpen(!menuOpen)}>
+          <div className="line"></div>
+          <div className="line"></div>
+          <div className="line"></div>
+        </div>
+        <div className="header-logo">
+          <h1>K.G</h1>
+          <p>Learn Trade Grow</p>
         </div>
         <div className="header-balance">
           <span className="hb-label">Portfolio</span>
@@ -225,35 +314,60 @@ export default function TradingSimulator({ onNavigate }) {
         </div>
       </header>
 
+      {/* ── Mobile Menu ──────── */}
       {menuOpen && (
-        <nav className="side-menu">
-          <div className="menu-close" onClick={() => setMenuOpen(false)}>✕</div>
+        <div className="mobile-menu">
+          <div className="menu-user-info">
+            <div className="menu-avatar" style={{ background: menuPhoto ? "transparent" : menuAvatarColor }}>
+              {menuPhoto
+                ? <img src={menuPhoto} alt="avatar" />
+                : <span>{(currentUser?.displayName?.[0] || currentUser?.email?.[0] || "U").toUpperCase()}</span>}
+            </div>
+            <div className="menu-user-text">
+              <p className="menu-user-name">{currentUser?.displayName || "Trader"}</p>
+              <p className="menu-user-email">{currentUser?.email}</p>
+            </div>
+          </div>
           <ul>
-            <li onClick={() => handleMenuClick("starterGuide")}>🏠 Starter Guide</li>
-            <li onClick={() => handleMenuClick("lessons")}>📚 Lessons</li>
-            <li className="menu-active">📈 Trading Simulator</li>
+            <li onClick={() => { setMenuOpen(false); if (onNavigate) onNavigate("starterGuide"); }}>Starter Guide</li>
+            <li onClick={() => { setMenuOpen(false); if (onNavigate) onNavigate("lessons"); }}>Lessons</li>
+            <li className="active">Trading Simulator</li>
+            <li onClick={() => { setMenuOpen(false); if (onNavigate) onNavigate("profile"); }}>Profile</li>
+            <li onClick={handleLogoutClick}>Logout</li>
           </ul>
-        </nav>
+        </div>
+      )}
+
+      {/* ── Logout Confirmation Modal ─────────────── */}
+      {showLogoutConfirm && (
+        <div className="modal-overlay" onClick={handleLogoutCancel}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+            </div>
+            <h3>Logout Confirmation</h3>
+            <p>Are you sure you want to logout?</p>
+            <div className="modal-buttons">
+              <button className="cancel-btn" onClick={handleLogoutCancel}>Cancel</button>
+              <button className="confirm-btn" onClick={handleLogoutConfirm}>Yes, Logout</button>
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="sim-body">
         {/* ── Sidebar ──────────────────────────────────────────────────── */}
         <aside className="sim-sidebar">
           <div className="sidebar-stats">
+            <div className="stat-row"><span>Cash</span><strong>€{fmt(balance)}</strong></div>
+            <div className="stat-row"><span>Invested</span><strong>€{fmt(invested)}</strong></div>
+            <div className="stat-row"><span>Total Value</span><strong>€{fmt(portfolioValue)}</strong></div>
             <div className="stat-row">
-              <span>Cash</span>
-              <strong>€{fmt(balance)}</strong>
-            </div>
-            <div className="stat-row">
-              <span>Invested</span>
-              <strong>€{fmt(invested)}</strong>
-            </div>
-            <div className="stat-row">
-              <span>Total Value</span>
-              <strong>€{fmt(portfolioValue)}</strong>
-            </div>
-            <div className="stat-row">
-              <span>P&L</span>
+              <span>Trading P&L</span>
               <strong className={totalReturn >= 0 ? "pos" : "neg"}>
                 {totalReturn >= 0 ? "+" : ""}€{fmt(totalReturn)}
               </strong>
@@ -288,7 +402,6 @@ export default function TradingSimulator({ onNavigate }) {
 
         {/* ── Main Panel ───────────────────────────────────────────────── */}
         <main className="sim-main">
-          {/* Tabs */}
           <div className="main-tabs">
             {[["trade","Trade"],["portfolio","Portfolio"],["history","History"]].map(([k,l]) => (
               <button key={k} className={`main-tab ${activeTab === k ? "active" : ""}`} onClick={() => setActiveTab(k)}>{l}</button>
@@ -298,7 +411,6 @@ export default function TradingSimulator({ onNavigate }) {
           {/* ── TRADE ──────────────────────────────────────────────────── */}
           {activeTab === "trade" && (
             <div className="trade-area">
-              {/* Ticker search bar */}
               <div className="ticker-bar">
                 <input
                   className="ticker-input"
@@ -376,11 +488,11 @@ export default function TradingSimulator({ onNavigate }) {
                                   <stop offset="95%" stopColor={chartColor} stopOpacity={0} />
                                 </linearGradient>
                               </defs>
-                              <CartesianGrid strokeDasharray="3 3" stroke="#1e2a35" vertical={false} />
-                              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7a8d" }} interval={14} tickLine={false} axisLine={false} />
-                              <YAxis domain={[chartMin, chartMax]} tick={{ fontSize: 10, fill: "#6b7a8d" }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} width={60} />
+                              <CartesianGrid strokeDasharray="3 3" stroke="#e8eef4" vertical={false} />
+                              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#aaa" }} interval={14} tickLine={false} axisLine={false} />
+                              <YAxis domain={[chartMin, chartMax]} tick={{ fontSize: 10, fill: "#aaa" }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} width={60} />
                               <Tooltip content={<PriceTooltip />} />
-                              <ReferenceLine y={bars[0]?.close} stroke="#3a4a5a" strokeDasharray="4 4" />
+                              <ReferenceLine y={bars[0]?.close} stroke="#ccc" strokeDasharray="4 4" />
                               <Area type="monotone" dataKey="close" stroke={chartColor} strokeWidth={2} fill="url(#grad)" dot={false} activeDot={{ r: 5, fill: chartColor, stroke: "#fff", strokeWidth: 2 }} />
                             </AreaChart>
                           </ResponsiveContainer>
@@ -396,11 +508,11 @@ export default function TradingSimulator({ onNavigate }) {
                       {chartView === "volume" && (
                         <ResponsiveContainer width="100%" height={260}>
                           <BarChart data={bars} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#1e2a35" vertical={false} />
-                            <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7a8d" }} interval={14} tickLine={false} axisLine={false} />
-                            <YAxis tick={{ fontSize: 10, fill: "#6b7a8d" }} tickLine={false} axisLine={false} tickFormatter={fmtV} width={52} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e8eef4" vertical={false} />
+                            <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#aaa" }} interval={14} tickLine={false} axisLine={false} />
+                            <YAxis tick={{ fontSize: 10, fill: "#aaa" }} tickLine={false} axisLine={false} tickFormatter={fmtV} width={52} />
                             <Tooltip content={<VolumeTooltip />} />
-                            <Bar dataKey="volume" fill="#2c4a6a" radius={[2, 2, 0, 0]} />
+                            <Bar dataKey="volume" fill="#1a3c5e" radius={[2, 2, 0, 0]} />
                           </BarChart>
                         </ResponsiveContainer>
                       )}
@@ -442,27 +554,21 @@ export default function TradingSimulator({ onNavigate }) {
                       </div>
                       <div className="order-field">
                         <label>Est. Total</label>
-                        <div className="order-total">
-                          {sharesNum > 0 ? `€${fmt(tradeCost)}` : "—"}
-                        </div>
+                        <div className="order-total">{sharesNum > 0 ? `€${fmt(tradeCost)}` : "—"}</div>
                       </div>
                     </div>
                     {tradeCost > balance && sharesNum > 0 && (
-                      <p className="order-warn">⚠ Insufficient balance</p>
+                      <p className="order-warn">⚠ Insufficient balance —{" "}
+                        <button className="inline-topup-link" onClick={() => { setActiveTab("portfolio"); setShowTopup(true); }}>
+                          top up your balance
+                        </button>
+                      </p>
                     )}
                     <div className="order-btns">
-                      <button
-                        className="order-btn buy"
-                        onClick={() => handleTrade("buy")}
-                        disabled={!sharesNum || tradeCost > balance}
-                      >
+                      <button className="order-btn buy" onClick={() => handleTrade("buy")} disabled={!sharesNum || tradeCost > balance}>
                         Buy {sharesNum > 0 ? `${sharesNum} shares` : ""}
                       </button>
-                      <button
-                        className="order-btn sell"
-                        onClick={() => handleTrade("sell")}
-                        disabled={!sharesNum || !myHolding}
-                      >
+                      <button className="order-btn sell" onClick={() => handleTrade("sell")} disabled={!sharesNum || !myHolding}>
                         Sell {sharesNum > 0 ? `${sharesNum} shares` : ""}
                       </button>
                     </div>
@@ -481,11 +587,49 @@ export default function TradingSimulator({ onNavigate }) {
                 <div className="ps-card"><span>Invested</span><strong>€{fmt(invested)}</strong></div>
                 <div className="ps-card"><span>Total Value</span><strong>€{fmt(portfolioValue)}</strong></div>
                 <div className="ps-card">
-                  <span>Total Return</span>
+                  <span>Trading P&L</span>
                   <strong className={totalReturn >= 0 ? "pos" : "neg"}>
                     {totalReturn >= 0 ? "+" : ""}€{fmt(totalReturn)} ({returnPct}%)
                   </strong>
                 </div>
+              </div>
+
+              {/* Top Up */}
+              <div className="topup-section">
+                <div className="topup-header" onClick={() => setShowTopup(!showTopup)}>
+                  <div className="topup-header-left">
+                    <span className="topup-icon">💳</span>
+                    <div>
+                      <h4>Top Up Virtual Balance</h4>
+                      <p>Running low on cash? Add more virtual funds to keep trading.</p>
+                    </div>
+                  </div>
+                  <span className="topup-chevron">{showTopup ? "▲" : "▼"}</span>
+                </div>
+
+                {showTopup && (
+                  <div className="topup-body">
+                    <p className="topup-current">Current balance: <strong>€{fmt(balance)}</strong></p>
+                    <div className="topup-amounts">
+                      {TOPUP_AMOUNTS.map((amt) => (
+                        <button
+                          key={amt}
+                          className={`topup-amt-btn ${topupAmount === amt ? "active" : ""}`}
+                          onClick={() => setTopupAmount(amt)}
+                        >
+                          +€{amt.toLocaleString()}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="topup-preview">
+                      After top up: <strong>€{(balance + topupAmount).toLocaleString("en-IE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                    </div>
+                    <button className="topup-confirm-btn" onClick={handleTopUp} disabled={topupLoading}>
+                      {topupLoading ? <><div className="spin-sm" /> Adding funds...</> : `Add €${topupAmount.toLocaleString()} to my balance`}
+                    </button>
+                    {topupMsg && <div className={`trade-msg ${topupMsg.type}`}>{topupMsg.text}</div>}
+                  </div>
+                )}
               </div>
 
               {activeHoldings.length === 0 ? (
@@ -526,14 +670,18 @@ export default function TradingSimulator({ onNavigate }) {
                   <tbody>
                     {transactions.map((t, i) => (
                       <tr key={i}>
-                        <td><span className={`tx-badge ${t.type}`}>{t.type.toUpperCase()}</span></td>
+                        <td>
+                          <span className={`tx-badge ${t.type}`}>
+                            {t.type === "topup" ? "TOP UP" : t.type.toUpperCase()}
+                          </span>
+                        </td>
                         <td className="td-sym">{t.symbol}</td>
-                        <td>{t.shares}</td>
-                        <td>${fmt(t.price)}</td>
+                        <td>{t.shares || "—"}</td>
+                        <td>{t.price ? `$${fmt(t.price)}` : "—"}</td>
                         <td className={t.type === "buy" ? "neg" : "pos"}>
                           {t.type === "buy" ? "−" : "+"}€{fmt(t.total)}
                         </td>
-                        <td className="td-date">{t.createdAt?.toDate?.()?.toLocaleDateString?.() || "—"}</td>
+                        <td className="td-date">{t.createdAt?.toDate?.()?.toLocaleDateString?.() || "Today"}</td>
                       </tr>
                     ))}
                   </tbody>

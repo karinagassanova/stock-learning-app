@@ -1,13 +1,29 @@
-import React, { useState } from "react";
-import { auth } from "../firebase";
+import React, { useState, useEffect } from "react";
+import { auth, db } from "../firebase";
 import { signOut } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import "../css/LessonView.css";
+import "../css/NavMenu.css";
 import Quiz from "./Quiz";
 
 export default function LessonView({ lesson, onBack, onNavigate }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
+  const [menuPhoto, setMenuPhoto] = useState(null);
+  const [menuAvatarColor, setMenuAvatarColor] = useState("#8fb9a8");
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (user) {
+      getDoc(doc(db, "profiles", user.uid)).then((snap) => {
+        if (snap.exists()) {
+          setMenuPhoto(snap.data().photoData || null);
+          setMenuAvatarColor(snap.data().avatarColor || "#8fb9a8");
+        }
+      }).catch(() => {});
+    }
+  }, []);
 
   // Guard: if lesson is undefined, don't crash
   if (!lesson) {
@@ -56,11 +72,22 @@ export default function LessonView({ lesson, onBack, onNavigate }) {
 
       {menuOpen && (
         <div className="mobile-menu">
+          <div className="menu-user-info">
+            <div className="menu-avatar" style={{ background: menuPhoto ? "transparent" : menuAvatarColor }}>
+              {menuPhoto
+                ? <img src={menuPhoto} alt="avatar" />
+                : <span>{(auth.currentUser?.displayName?.[0] || auth.currentUser?.email?.[0] || "U").toUpperCase()}</span>}
+            </div>
+            <div className="menu-user-text">
+              <p className="menu-user-name">{auth.currentUser?.displayName || "Trader"}</p>
+              <p className="menu-user-email">{auth.currentUser?.email}</p>
+            </div>
+          </div>
           <ul>
             <li onClick={() => handleMenuClick("starterGuide")}>Starter Guide</li>
             <li className="active">Lessons</li>
-            <li onClick={() => onNavigate("simulator")}>Trading Simulator</li>
-            <li>Profile</li>
+            <li onClick={() => handleMenuClick("trading")}>Trading Simulator</li>
+            <li onClick={() => handleMenuClick("profile")}>Profile</li>
             <li onClick={handleLogoutClick}>Logout</li>
           </ul>
         </div>

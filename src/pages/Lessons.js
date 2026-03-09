@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { auth, db } from "../firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { doc, setDoc, collection, getDocs, query, where } from "firebase/firestore";
+import { doc, setDoc, collection, getDocs, query, where, getDoc } from "firebase/firestore";
 import { lessonsData } from "../data/lessonsData";
 import LessonView from "./LessonView";
 import Quiz from "./Quiz";
 import "../css/Lessons.css";
+import "../css/NavMenu.css";
 
 const LESSON_LIST = [
   { id: 1, title: "Introduction to the Stock Market", description: "Understand what stocks are, how the market works, and why people invest", difficulty: "Beginner", duration: "20 min" },
@@ -19,64 +20,58 @@ const LESSON_LIST = [
 ];
 
 export default function Lessons({ onNavigate }) {
-  const [currentUser, setCurrentUser] = useState(null);  // tracked via onAuthStateChanged
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [currentUser, setCurrentUser]         = useState(null);
+  const [menuOpen, setMenuOpen]               = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [selectedLesson, setSelectedLesson] = useState(null);
-  const [reviewQuizId, setReviewQuizId] = useState(null);
-  const [progress, setProgress] = useState({});
-  const [loading, setLoading] = useState(true);
+  const [selectedLesson, setSelectedLesson]   = useState(null);
+  const [reviewQuizId, setReviewQuizId]       = useState(null);
+  const [progress, setProgress]               = useState({});
+  const [loading, setLoading]                 = useState(true);
 
-  // ── Always track the real current user ───────────────────────────────────
+  // Profile photo for menu
+  const [menuPhoto, setMenuPhoto]             = useState(null);
+  const [menuAvatarColor, setMenuAvatarColor] = useState("#8fb9a8");
+
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+      if (user) {
+        try {
+          const snap = await getDoc(doc(db, "profiles", user.uid));
+          if (snap.exists()) {
+            setMenuPhoto(snap.data().photoData || null);
+            setMenuAvatarColor(snap.data().avatarColor || "#8fb9a8");
+          }
+        } catch (e) { /* silent */ }
+      }
     });
     return () => unsubscribe();
   }, []);
 
-  // ── Fetch this user's progress from Firestore ─────────────────────────────
   const fetchProgress = useCallback(async (user) => {
     if (!user) return;
     setLoading(true);
     try {
       const progressMap = {};
-      const q = query(
-        collection(db, "lessonProgress"),
-        where("userId", "==", user.uid)   // always scoped to this exact user
-      );
+      const q = query(collection(db, "lessonProgress"), where("userId", "==", user.uid));
       const snapshot = await getDocs(q);
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
         progressMap[data.lessonId] = data;
       });
 
-      // New user — create lesson 1 as unlocked
       if (!progressMap[1]) {
-        const lesson1Doc = {
-          userId: user.uid,
-          lessonId: 1,
-          status: "unlocked",
-          quizScore: null,
-          passedQuiz: false,
-          startedAt: null,
-          completedAt: null,
-        };
+        const lesson1Doc = { userId: user.uid, lessonId: 1, status: "unlocked", quizScore: null, passedQuiz: false, startedAt: null, completedAt: null };
         await setDoc(doc(db, "lessonProgress", `${user.uid}_lesson1`), lesson1Doc);
         progressMap[1] = lesson1Doc;
       }
-
-      // Lesson 1 safety net
       if (progressMap[1].status === "locked") {
         await setDoc(doc(db, "lessonProgress", `${user.uid}_lesson1`), { status: "unlocked" }, { merge: true });
         progressMap[1] = { ...progressMap[1], status: "unlocked" };
       }
-
-      // Fill remaining as locked
       LESSON_LIST.forEach(({ id }) => {
         if (!progressMap[id]) progressMap[id] = { lessonId: id, status: "locked" };
       });
-
       setProgress(progressMap);
     } catch (err) {
       console.error("Error fetching progress:", err);
@@ -85,51 +80,37 @@ export default function Lessons({ onNavigate }) {
     }
   }, []);
 
-  // Re-fetch whenever the logged-in user changes
-  useEffect(() => {
-    if (currentUser) fetchProgress(currentUser);
-  }, [currentUser, fetchProgress]);
+  useEffect(() => { if (currentUser) fetchProgress(currentUser); }, [currentUser, fetchProgress]);
 
-  // ── Open a lesson ─────────────────────────────────────────────────────────
   const handleStartLesson = async (lesson) => {
     if (!lesson) {
       setSelectedLesson(null);
       if (currentUser) await fetchProgress(currentUser);
       return;
     }
-
     const lessonProgress = progress[lesson.id];
     if (!lessonProgress || lessonProgress.status === "locked") return;
-
     if (lessonProgress.status === "unlocked" && currentUser) {
       try {
-        await setDoc(
-          doc(db, "lessonProgress", `${currentUser.uid}_lesson${lesson.id}`),
-          { status: "in-progress", startedAt: new Date() },
-          { merge: true }
-        );
-        setProgress((prev) => ({
-          ...prev,
-          [lesson.id]: { ...prev[lesson.id], status: "in-progress" },
-        }));
-      } catch (err) {
-        console.error("Error marking in-progress:", err);
-      }
+        await setDoc(doc(db, "lessonProgress", `${currentUser.uid}_lesson${lesson.id}`), { status: "in-progress", startedAt: new Date() }, { merge: true });
+        setProgress((prev) => ({ ...prev, [lesson.id]: { ...prev[lesson.id], status: "in-progress" } }));
+      } catch (err) { console.error("Error marking in-progress:", err); }
     }
-
     const fullLesson = lessonsData[lesson.id];
     if (fullLesson) setSelectedLesson(fullLesson);
-    else console.error("lessonsData missing id:", lesson.id);
   };
 
-  const handleLogoutClick = () => { setShowLogoutConfirm(true); setMenuOpen(false); };
-  const handleLogoutCancel = () => setShowLogoutConfirm(false);
+  const handleLogoutClick   = () => { setShowLogoutConfirm(true); setMenuOpen(false); };
+  const handleLogoutCancel  = () => setShowLogoutConfirm(false);
   const handleLogoutConfirm = async () => {
-    try { await signOut(auth); } catch (err) { alert("Error logging out: " + err.message); }
+    try {
+      await signOut(auth);
+      if (onNavigate) onNavigate("landing");
+    } catch (err) { alert("Error logging out: " + err.message); }
   };
   const handleMenuClick = (page) => { setMenuOpen(false); if (onNavigate) onNavigate(page); };
 
-  const getStatus = (id) => progress[id]?.status || "locked";
+  const getStatus     = (id) => progress[id]?.status || "locked";
   const getStatusBadge = (status) => {
     switch (status) {
       case "completed":   return <span className="status-badge completed">✓ Completed</span>;
@@ -141,32 +122,17 @@ export default function Lessons({ onNavigate }) {
   const getDifficultyColor = (d) => ({ Beginner: "#4caf50", Intermediate: "#ff9800", Advanced: "#f44336" }[d] || "#999");
   const getBtnLabel = (status) => ({ unlocked: "Start Lesson →", "in-progress": "Continue Lesson →", completed: "Review Lesson" }[status] || "🔒 Locked");
 
-  const completedCount = Object.values(progress).filter((p) => p.status === "completed").length;
-  const progressPercent = Math.round((completedCount / LESSON_LIST.length) * 100);
+  const completedCount   = Object.values(progress).filter((p) => p.status === "completed").length;
+  const progressPercent  = Math.round((completedCount / LESSON_LIST.length) * 100);
+  const avatarLetter     = (currentUser?.displayName?.[0] || currentUser?.email?.[0] || "U").toUpperCase();
 
-  // ── Review Quiz screen ────────────────────────────────────────────────────
   if (reviewQuizId) {
-    return (
-      <Quiz
-        lessonId={reviewQuizId}
-        reviewMode={true}
-        onBackToLesson={() => setReviewQuizId(null)}
-      />
-    );
+    return <Quiz lessonId={reviewQuizId} reviewMode={true} onBackToLesson={() => setReviewQuizId(null)} />;
   }
-
-  // ── Lesson content screen ─────────────────────────────────────────────────
   if (selectedLesson) {
-    return (
-      <LessonView
-        lesson={selectedLesson}
-        onBack={() => handleStartLesson(null)}
-        onNavigate={onNavigate}
-      />
-    );
+    return <LessonView lesson={selectedLesson} onBack={() => handleStartLesson(null)} onNavigate={onNavigate} />;
   }
 
-  // ── Lessons list ──────────────────────────────────────────────────────────
   return (
     <div className="lessons-container">
       <header className="lessons-header">
@@ -183,11 +149,22 @@ export default function Lessons({ onNavigate }) {
 
       {menuOpen && (
         <div className="mobile-menu">
+          <div className="menu-user-info">
+            <div className="menu-avatar" style={{ background: menuPhoto ? "transparent" : menuAvatarColor }}>
+              {menuPhoto
+                ? <img src={menuPhoto} alt="avatar" />
+                : <span>{avatarLetter}</span>}
+            </div>
+            <div className="menu-user-text">
+              <p className="menu-user-name">{currentUser?.displayName || "Trader"}</p>
+              <p className="menu-user-email">{currentUser?.email}</p>
+            </div>
+          </div>
           <ul>
             <li onClick={() => handleMenuClick("starterGuide")}>Starter Guide</li>
             <li className="active">Lessons</li>
-            <li onClick={() => onNavigate("simulator")}>Trading Simulator</li>
-            <li>Profile</li>
+            <li onClick={() => handleMenuClick("trading")}>Trading Simulator</li>
+            <li onClick={() => handleMenuClick("profile")}>Profile</li>
             <li onClick={handleLogoutClick}>Logout</li>
           </ul>
         </div>
@@ -238,17 +215,14 @@ export default function Lessons({ onNavigate }) {
         ) : (
           <div className="lessons-grid">
             {LESSON_LIST.map((lesson) => {
-              const status = getStatus(lesson.id);
+              const status   = getStatus(lesson.id);
               const isLocked = status === "locked";
               const quizScore = progress[lesson.id]?.quizScore;
-
               return (
                 <div key={lesson.id} className={`lesson-card ${isLocked ? "locked" : ""} ${status === "completed" ? "completed" : ""}`}>
                   <div className="lesson-card-header">
                     <div className="lesson-number">Lesson {lesson.id}</div>
-                    <div className="lesson-difficulty" style={{ backgroundColor: getDifficultyColor(lesson.difficulty) }}>
-                      {lesson.difficulty}
-                    </div>
+                    <div className="lesson-difficulty" style={{ backgroundColor: getDifficultyColor(lesson.difficulty) }}>{lesson.difficulty}</div>
                   </div>
                   <h3 className="lesson-title">{lesson.title}</h3>
                   <p className="lesson-description">{lesson.description}</p>
@@ -262,7 +236,6 @@ export default function Lessons({ onNavigate }) {
                     </span>
                     {getStatusBadge(status)}
                   </div>
-
                   {quizScore !== null && quizScore !== undefined && (
                     <div className="quiz-score-row">
                       <span>Quiz Score:</span>
@@ -271,7 +244,6 @@ export default function Lessons({ onNavigate }) {
                       </span>
                     </div>
                   )}
-
                   <button
                     className={`start-lesson-btn ${isLocked ? "btn-locked" : ""} ${status === "completed" ? "btn-completed" : ""}`}
                     onClick={() => !isLocked && handleStartLesson(lesson)}
@@ -279,11 +251,8 @@ export default function Lessons({ onNavigate }) {
                   >
                     {getBtnLabel(status)}
                   </button>
-
                   {status === "completed" && (
-                    <button className="review-quiz-btn" onClick={() => setReviewQuizId(lesson.id)}>
-                      Review Quiz
-                    </button>
+                    <button className="review-quiz-btn" onClick={() => setReviewQuizId(lesson.id)}>Review Quiz</button>
                   )}
                 </div>
               );
