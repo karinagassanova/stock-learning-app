@@ -8,6 +8,22 @@ export default function Quiz({ lessonId, onQuizComplete, onBackToLesson, reviewM
   const id = Number(lessonId);
   const quiz = quizData[id];
 
+  // ── Pick 10 random questions from the pool of 15 on every attempt ──────────
+  const QUIZ_SIZE = 10;
+
+  function pickQuestions(allQuestions) {
+    const qs = [...allQuestions];
+    for (let i = qs.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [qs[i], qs[j]] = [qs[j], qs[i]];
+    }
+    return qs.slice(0, QUIZ_SIZE);
+  }
+
+  const [shuffledQuestions, setShuffledQuestions] = useState(() =>
+    pickQuestions(quizData[Number(lessonId)]?.questions || [])
+  );
+
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
@@ -17,9 +33,10 @@ export default function Quiz({ lessonId, onQuizComplete, onBackToLesson, reviewM
   const [saveError, setSaveError] = useState(null);
 
   // Review mode state
-  const [reviewAnswers, setReviewAnswers] = useState(null);
-  const [reviewScore, setReviewScore] = useState(null);
-  const [reviewLoading, setReviewLoading] = useState(reviewMode);
+  const [reviewAnswers, setReviewAnswers]   = useState(null);
+  const [reviewScore, setReviewScore]       = useState(null);
+  const [reviewQuestions, setReviewQuestions] = useState([]);
+  const [reviewLoading, setReviewLoading]   = useState(reviewMode);
 
   // ── Fetch the user's last attempt from Firestore when in review mode ──────
   useEffect(() => {
@@ -46,13 +63,21 @@ export default function Quiz({ lessonId, onQuizComplete, onBackToLesson, reviewM
               return bTime - aTime;
             });
           const data = sorted[0];
-
+          // Firestore turns numeric keys to strings - normalise all to strings
           const normalised = {};
           Object.entries(data.answers || {}).forEach(([k, v]) => {
             normalised[String(k)] = v;
           });
           setReviewAnswers(normalised);
           setReviewScore({ percentage: data.percentage, correct: data.score, total: data.totalQuestions, passed: data.passed });
+          // Reconstruct the 10 questions that were shown in this attempt
+          if (data.questionIds && data.questionIds.length) {
+            const allQs = quizData[id]?.questions || [];
+            const attemptQs = data.questionIds
+              .map(qid => allQs.find(q => q.id === qid))
+              .filter(Boolean);
+            setReviewQuestions(attemptQs);
+          }
         } else {
           console.warn("No quiz results found for lesson", id);
         }
@@ -93,7 +118,7 @@ export default function Quiz({ lessonId, onQuizComplete, onBackToLesson, reviewM
         <div className="quiz-header">
           <button className="quiz-back-btn" onClick={onBackToLesson}>← Back to Lessons</button>
           <h2 className="quiz-title">{quiz.title} — Review</h2>
-          <span className="quiz-counter">{quiz.totalQuestions} Qs</span>
+          <span className="quiz-counter">{QUIZ_SIZE} Qs</span>
         </div>
 
         {/* Score summary banner */}
@@ -109,7 +134,7 @@ export default function Quiz({ lessonId, onQuizComplete, onBackToLesson, reviewM
           📖 Review Mode — green = correct answer, red = your wrong answer
         </div>
 
-        {quiz.questions.map((q, idx) => {
+        {(reviewQuestions.length ? reviewQuestions : quiz.questions.slice(0, QUIZ_SIZE)).map((q, idx) => {
           const userAnswer = reviewAnswers ? reviewAnswers[String(idx)] : null;
           const isCorrect = userAnswer === q.correctAnswer;
 
@@ -164,8 +189,8 @@ export default function Quiz({ lessonId, onQuizComplete, onBackToLesson, reviewM
   }
 
   // ── Normal Quiz Mode ──────────────────────────────────────────────────────
-  const question = quiz.questions[currentQuestion];
-  const totalQuestions = quiz.totalQuestions;
+  const question = reviewMode ? quiz.questions[currentQuestion] : shuffledQuestions[currentQuestion];
+  const totalQuestions = reviewMode ? quiz.questions.length : QUIZ_SIZE;
   const progressPercent = ((currentQuestion + 1) / totalQuestions) * 100;
   const isAnswered = selectedAnswers[currentQuestion] !== undefined;
   const isLastQuestion = currentQuestion === totalQuestions - 1;
@@ -196,7 +221,7 @@ export default function Quiz({ lessonId, onQuizComplete, onBackToLesson, reviewM
   };
 
   const handleFinishQuiz = async () => {
-    // Get the current user at save time
+    // Get the current user at save time — never use a stale reference
     const user = auth.currentUser;
     if (!user) {
       setSaveError("You must be logged in to save your progress.");
@@ -205,7 +230,7 @@ export default function Quiz({ lessonId, onQuizComplete, onBackToLesson, reviewM
 
     // Calculate score
     let correct = 0;
-    quiz.questions.forEach((q, idx) => {
+    shuffledQuestions.forEach((q, idx) => {
       if (selectedAnswers[idx] === q.correctAnswer) correct++;
     });
     const percentage = Math.round((correct / totalQuestions) * 100);
@@ -224,7 +249,8 @@ export default function Quiz({ lessonId, onQuizComplete, onBackToLesson, reviewM
         totalQuestions,
         percentage,
         passed,
-        answers: selectedAnswers,  
+        answers: selectedAnswers,
+        questionIds: shuffledQuestions.map(q => q.id), // which 10 were asked, in order
         completedAt: serverTimestamp(),
       });
 
@@ -277,6 +303,8 @@ export default function Quiz({ lessonId, onQuizComplete, onBackToLesson, reviewM
   };
 
   const handleRetry = () => {
+    // Pick a fresh random 10 from the 15 every retry
+    setShuffledQuestions(pickQuestions(quiz.questions || []));
     setSelectedAnswers({});
     setCurrentQuestion(0);
     setSubmitted(false);
@@ -312,7 +340,7 @@ export default function Quiz({ lessonId, onQuizComplete, onBackToLesson, reviewM
           </div>
 
           <div className="results-breakdown">
-            {quiz.questions.map((q, idx) => {
+            {shuffledQuestions.map((q, idx) => {
               const userAnswer = selectedAnswers[idx];
               const isCorrect = userAnswer === q.correctAnswer;
               return (
@@ -332,12 +360,11 @@ export default function Quiz({ lessonId, onQuizComplete, onBackToLesson, reviewM
           <div className="results-actions">
             {score.passed ? (
               <button className="quiz-btn primary" onClick={() => onQuizComplete && onQuizComplete(score)}>
-                {id < 8 ? "Back to Lessons →" : "🎉 All Done!"}
+                {id < 8 ? `Go to Lesson ${id + 1} →` : "🎉 All Done!"}
               </button>
             ) : (
-              <button className="quiz-btn primary" onClick={handleRetry}>Retry Quiz</button>
+              <button className="quiz-btn secondary" onClick={onBackToLesson}>← Back to Lesson</button>
             )}
-            <button className="quiz-btn secondary" onClick={onBackToLesson}>← Back to Lesson</button>
           </div>
         </div>
       </div>
@@ -399,7 +426,7 @@ export default function Quiz({ lessonId, onQuizComplete, onBackToLesson, reviewM
         <button className="quiz-btn secondary" onClick={handlePrev} disabled={currentQuestion === 0}>← Previous</button>
 
         <div className="quiz-dots">
-          {quiz.questions.map((_, idx) => (
+          {shuffledQuestions.map((_, idx) => (
             <span
               key={idx}
               className={`quiz-dot ${idx === currentQuestion ? "active" : ""} ${selectedAnswers[idx] !== undefined ? "answered" : ""}`}

@@ -269,6 +269,21 @@
 
 .review-quiz-btn:hover { background: #f0f7f4; }
 
+.retake-quiz-btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 9px;
+  background: transparent;
+  border: 2px solid #e74c3c;
+  color: #e74c3c;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.retake-quiz-btn:hover { background: #fff5f5; }
+
 /* Loading */
 .loading-lessons {
   display: flex;

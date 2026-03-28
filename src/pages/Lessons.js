@@ -254,6 +254,7 @@ export default function Lessons({ onNavigate }) {
                   {status === "completed" && (
                     <button className="review-quiz-btn" onClick={() => setReviewQuizId(lesson.id)}>Review Quiz</button>
                   )}
+
                 </div>
               );
             })}
