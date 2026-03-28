@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { auth, googleProvider } from "../firebase";
+import { auth, googleProvider } from "../services/firebase";
 import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import logo from "../assets/images/logo.png";
 import "../css/Auth.css";

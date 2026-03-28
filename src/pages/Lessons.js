@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { auth, db } from "../firebase";
+import { auth, db } from "../services/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, setDoc, collection, getDocs, query, where, getDoc } from "firebase/firestore";
 import { lessonsData } from "../data/lessonsData";

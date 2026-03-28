@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { auth, db } from "../firebase";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import ReactDOM from "react-dom";
+import { auth, db } from "../services/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import {
   doc, getDoc, setDoc, collection, getDocs,
@@ -33,12 +34,92 @@ const POPULAR = [
 const fmt  = (n) => (n ?? 0).toFixed(2);
 const fmtV = (n) => n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}K` : String(n);
 
+// ── Term definitions for tooltip pop-outs ─────────────────────────────────────
+const TERM_DEFS = {
+  "Invested":     "The total virtual cash you have spent buying stocks. This does not include your remaining cash balance.",
+  "Total Value":  "Your cash balance plus the current market value of all your holdings combined.",
+  "Trading P&L":  "Profit and Loss — the difference between your total portfolio value and the total amount you have deposited. Positive means profit, negative means a loss.",
+  "Avg Buy":      "The average price you paid per share. If you bought at different prices this is the weighted average across all your purchases.",
+  "Total Cost":   "The total amount spent on a holding, calculated as shares multiplied by your average buy price.",
+  "Unrealised P&L": "The gain or loss on this position based on the current live price versus what you paid. It is unrealised because you have not sold yet.",
+};
+
+// ── TermTooltip ─────────
+function TermTooltip({ term, children }) {
+  const [coords, setCoords] = useState(null);
+  const triggerRef          = useRef(null);
+  const explanation         = TERM_DEFS[term];
+
+  function show() {
+    if (!triggerRef.current) return;
+    const r   = triggerRef.current.getBoundingClientRect();
+    const tipW = 230;
+    const vw   = window.innerWidth;
+    const margin = 12;
+
+    // horizontal: centre on trigger, clamp to viewport
+    let left = r.left + r.width / 2 - tipW / 2;
+    left = Math.max(margin, Math.min(left, vw - tipW - margin));
+
+    // vertical: above trigger by default
+    const top = r.top + window.scrollY - 10;
+
+    // arrow offset relative to the tooltip box
+    const arrowLeft = (r.left + r.width / 2) - left;
+
+    setCoords({ left, top, arrowLeft });
+  }
+
+  function hide() { setCoords(null); }
+
+  if (!explanation) return <span>{children || term}</span>;
+
+  const tooltip = coords ? ReactDOM.createPortal(
+    <span
+      className="tt-portal"
+      style={{ left: coords.left, top: coords.top }}
+    >
+      <span className="tt-portal-inner">
+        <span className="tt-portal-header">
+          <span className="tt-portal-dot" />
+          <strong>{term}</strong>
+        </span>
+        <span className="tt-portal-body">{explanation}</span>
+      </span>
+      <span
+        className="tt-portal-arrow"
+        style={{ left: Math.max(12, Math.min(coords.arrowLeft, 230 - 20)) }}
+      />
+    </span>,
+    document.body
+  ) : null;
+
+  return (
+    <>
+      <span
+        ref={triggerRef}
+        className="tt-trigger"
+        onMouseEnter={show}
+        onMouseLeave={hide}
+        onFocus={show}
+        onBlur={hide}
+      >
+        {children || term}
+        <span className="tt-badge">?</span>
+      </span>
+      {tooltip}
+    </>
+  );
+}
+
+
+// ── Chart tooltips ─────────────────────────────────────────────────────────────
 const PriceTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
     <div className="custom-tooltip">
-      <p className="tt-date">{label}</p>
-      <p className="tt-price">${fmt(payload[0].value)}</p>
+      <p className="ctt-date">{label}</p>
+      <p className="ctt-price">${fmt(payload[0].value)}</p>
     </div>
   );
 };
@@ -47,42 +128,46 @@ const VolumeTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
     <div className="custom-tooltip">
-      <p className="tt-date">{label}</p>
-      <p className="tt-price">{fmtV(payload[0].value)}</p>
+      <p className="ctt-date">{label}</p>
+      <p className="ctt-price">{fmtV(payload[0].value)}</p>
     </div>
   );
 };
 
 export default function TradingSimulator({ onNavigate }) {
-  const [currentUser, setCurrentUser]     = useState(null);
-  const [balance, setBalance]             = useState(null);
+  const [currentUser, setCurrentUser]       = useState(null);
+  const [balance, setBalance]               = useState(null);
   const [totalDeposited, setTotalDeposited] = useState(STARTING_BALANCE);
-  const [holdings, setHoldings]           = useState([]);
-  const [transactions, setTransactions]   = useState([]);
-  const [loading, setLoading]             = useState(true);
+  const [holdings, setHoldings]             = useState([]);
+  const [transactions, setTransactions]     = useState([]);
+  const [loading, setLoading]               = useState(true);
 
-  const [tickerInput, setTickerInput]     = useState("");
-  const [stock, setStock]                 = useState(null);
-  const [bars, setBars]                   = useState([]);
-  const [loadingStock, setLoadingStock]   = useState(false);
-  const [stockError, setStockError]       = useState("");
+  const [tickerInput, setTickerInput]       = useState("");
+  const [stock, setStock]                   = useState(null);
+  const [bars, setBars]                     = useState([]);
+  const [loadingStock, setLoadingStock]     = useState(false);
+  const [stockError, setStockError]         = useState("");
 
-  const [shares, setShares]               = useState("");
-  const [tradeMsg, setTradeMsg]           = useState(null);
-  const [activeTab, setActiveTab]         = useState("trade");
-  const [chartView, setChartView]         = useState("price");
-  const [menuOpen, setMenuOpen]           = useState(false);
+  const [shares, setShares]                 = useState("");
+  const [tradeMsg, setTradeMsg]             = useState(null);
+  const [activeTab, setActiveTab]           = useState("trade");
+  const [chartView, setChartView]           = useState("price");
+  const [menuOpen, setMenuOpen]             = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [menuPhoto, setMenuPhoto]         = useState(null);
+  const [menuPhoto, setMenuPhoto]           = useState(null);
   const [menuAvatarColor, setMenuAvatarColor] = useState("#8fb9a8");
 
   // Top-up state
-  const [topupAmount, setTopupAmount]     = useState(1000);
-  const [topupMsg, setTopupMsg]           = useState(null);
-  const [topupLoading, setTopupLoading]   = useState(false);
-  const [showTopup, setShowTopup]         = useState(false);
+  const [topupAmount, setTopupAmount]       = useState(1000);
+  const [topupMsg, setTopupMsg]             = useState(null);
+  const [topupLoading, setTopupLoading]     = useState(false);
+  const [showTopup, setShowTopup]           = useState(false);
 
-  // ── Auth ──────────────────────────────────────────────────────────────
+  // ── Stock drop alert state ────────────────────────────────────────────────
+  const [alerts, setAlerts]                 = useState([]);
+  const dismissedAlerts                     = useRef(new Set());
+
+  // ── Auth ───────────────────────────────────────────────────────────────────
   useEffect(() => {
     return onAuthStateChanged(auth, async (u) => {
       setCurrentUser(u);
@@ -98,7 +183,32 @@ export default function TradingSimulator({ onNavigate }) {
     });
   }, []);
 
-  // ── Load portfolio ─────────────────────────────────────────────────────
+  // ── Check for stock price drops on holdings ────────────────────────────────
+  const checkAlerts = useCallback(async (currentHoldings) => {
+    if (!currentHoldings || currentHoldings.length === 0) return;
+    const newAlerts = [];
+    for (const h of currentHoldings.filter(h => h.shares > 0)) {
+      if (!h.avgBuyPrice || dismissedAlerts.current.has(h.symbol)) continue;
+      try {
+        const snap = await fetchSnapshot(h.symbol);
+        const price = snap?.price;
+        if (!price) continue;
+        const dropPct = (h.avgBuyPrice - price) / h.avgBuyPrice;
+        if (dropPct >= 0.05) {
+          newAlerts.push({
+            symbol: h.symbol,
+            name: h.name || h.symbol,
+            avgBuyPrice: h.avgBuyPrice,
+            currentPrice: price,
+            dropPct: (dropPct * 100).toFixed(1),
+          });
+        }
+      } catch { /* skip if fetch fails for a holding */ }
+    }
+    setAlerts(newAlerts);
+  }, []);
+
+  // ── Load portfolio ─────────────────────────────────────────────────────────
   const loadPortfolio = useCallback(async (user) => {
     if (!user) return;
     setLoading(true);
@@ -120,7 +230,11 @@ export default function TradingSimulator({ onNavigate }) {
       }
 
       const hSnap = await getDocs(query(collection(db, "holdings"), where("userId", "==", user.uid)));
-      setHoldings(hSnap.docs.map((d) => d.data()));
+      const holdingsList = hSnap.docs.map((d) => d.data());
+      setHoldings(holdingsList);
+
+      // Check for price drop alerts after holdings load
+      checkAlerts(holdingsList);
 
       const tSnap = await getDocs(query(collection(db, "transactions"), where("userId", "==", user.uid)));
       const txs = tSnap.docs.map((d) => d.data())
@@ -131,13 +245,19 @@ export default function TradingSimulator({ onNavigate }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [checkAlerts]);
 
   useEffect(() => { if (currentUser) loadPortfolio(currentUser); }, [currentUser, loadPortfolio]);
 
-  // ── Logout ─────────────────────────────────────────────────────────────
-  const handleLogoutClick = () => { setShowLogoutConfirm(true); setMenuOpen(false); };
-  const handleLogoutCancel = () => setShowLogoutConfirm(false);
+  // ── Dismiss an alert ───────────────────────────────────────────────────────
+  function dismissAlert(symbol) {
+    dismissedAlerts.current.add(symbol);
+    setAlerts(prev => prev.filter(a => a.symbol !== symbol));
+  }
+
+  // ── Logout ─────────────────────────────────────────────────────────────────
+  const handleLogoutClick   = () => { setShowLogoutConfirm(true); setMenuOpen(false); };
+  const handleLogoutCancel  = () => setShowLogoutConfirm(false);
   const handleLogoutConfirm = async () => {
     try {
       await signOut(auth);
@@ -147,7 +267,7 @@ export default function TradingSimulator({ onNavigate }) {
     }
   };
 
-  // ── Load stock ─────────────────────────────────────────────────────────
+  // ── Load stock ─────────────────────────────────────────────────────────────
   const handleLoadStock = async (sym) => {
     const symbol = (sym || tickerInput).toUpperCase().trim();
     if (!symbol) return;
@@ -167,7 +287,7 @@ export default function TradingSimulator({ onNavigate }) {
     setTickerInput(symbol);
   };
 
-  // ── Top Up ─────────────────────────────────────────────────────────────
+  // ── Top Up ─────────────────────────────────────────────────────────────────
   const handleTopUp = async () => {
     const user = auth.currentUser;
     if (!user || topupLoading) return;
@@ -208,7 +328,7 @@ export default function TradingSimulator({ onNavigate }) {
     }
   };
 
-  // ── Trade ──────────────────────────────────────────────────────────────
+  // ── Trade ──────────────────────────────────────────────────────────────────
   const handleTrade = async (type) => {
     const qty = parseFloat(shares);
     if (!qty || qty <= 0 || !stock) return;
@@ -252,13 +372,16 @@ export default function TradingSimulator({ onNavigate }) {
         userId: user.uid, type, symbol: stock.symbol, name: stock.symbol,
         shares: qty, price: stock.price, total, createdAt: serverTimestamp(),
       });
-      setBalance(newBalance);
-      setHoldings((prev) => {
-        const filtered = prev.filter((h) => h.symbol !== stock.symbol);
+      const updatedHoldings = (() => {
+        const filtered = holdings.filter((h) => h.symbol !== stock.symbol);
         return newShares > 0
           ? [...filtered, { userId: user.uid, symbol: stock.symbol, name: stock.symbol, shares: newShares, avgBuyPrice: newAvg }]
           : filtered;
-      });
+      })();
+      setBalance(newBalance);
+      setHoldings(updatedHoldings);
+      // Re-check alerts after a trade since holdings changed
+      checkAlerts(updatedHoldings);
       setShares("");
       setTradeMsg({ type: "success", text: `${type === "buy" ? "✓ Bought" : "✓ Sold"} ${qty} share${qty !== 1 ? "s" : ""} of ${stock.symbol} — €${fmt(total)}` });
     } catch {
@@ -266,12 +389,10 @@ export default function TradingSimulator({ onNavigate }) {
     }
   };
 
-  // ── Derived ────────────────────────────────────────────────────────────
+  // ── Derived ────────────────────────────────────────────────────────────────
   const activeHoldings = holdings.filter((h) => h.shares > 0);
   const invested       = activeHoldings.reduce((s, h) => s + h.avgBuyPrice * h.shares, 0);
   const portfolioValue = (balance || 0) + invested;
-
-  // P&L only reflects trading gains/losses — not top-up deposits
   const totalReturn    = portfolioValue - totalDeposited;
   const returnPct      = totalDeposited > 0 ? ((totalReturn / totalDeposited) * 100).toFixed(2) : "0.00";
 
@@ -294,6 +415,7 @@ export default function TradingSimulator({ onNavigate }) {
 
   return (
     <div className="sim-wrap">
+
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <header className="sim-header">
         <div className="hamburger-menu" onClick={() => setMenuOpen(!menuOpen)}>
@@ -314,7 +436,7 @@ export default function TradingSimulator({ onNavigate }) {
         </div>
       </header>
 
-      {/* ── Mobile Menu ──────── */}
+      {/* ── Mobile Menu ────────────────────────────────────────────────── */}
       {menuOpen && (
         <div className="mobile-menu">
           <div className="menu-user-info">
@@ -338,19 +460,11 @@ export default function TradingSimulator({ onNavigate }) {
         </div>
       )}
 
-      {/* ── Logout Confirmation Modal ─────────────── */}
+      {/* ── Logout Modal ───────────────────────────────────────────────── */}
       {showLogoutConfirm && (
         <div className="modal-overlay" onClick={handleLogoutCancel}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                <polyline points="16 17 21 12 16 7"></polyline>
-                <line x1="21" y1="12" x2="9" y2="12"></line>
-              </svg>
-            </div>
-            <h3>Logout Confirmation</h3>
-            <p>Are you sure you want to logout?</p>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <p>Are you sure you want to log out?</p>
             <div className="modal-buttons">
               <button className="cancel-btn" onClick={handleLogoutCancel}>Cancel</button>
               <button className="confirm-btn" onClick={handleLogoutConfirm}>Yes, Logout</button>
@@ -360,14 +474,21 @@ export default function TradingSimulator({ onNavigate }) {
       )}
 
       <div className="sim-body">
+
         {/* ── Sidebar ──────────────────────────────────────────────────── */}
         <aside className="sim-sidebar">
           <div className="sidebar-stats">
             <div className="stat-row"><span>Cash</span><strong>€{fmt(balance)}</strong></div>
-            <div className="stat-row"><span>Invested</span><strong>€{fmt(invested)}</strong></div>
-            <div className="stat-row"><span>Total Value</span><strong>€{fmt(portfolioValue)}</strong></div>
             <div className="stat-row">
-              <span>Trading P&L</span>
+              <span><TermTooltip term="Invested">Invested</TermTooltip></span>
+              <strong>€{fmt(invested)}</strong>
+            </div>
+            <div className="stat-row">
+              <span><TermTooltip term="Total Value">Total Value</TermTooltip></span>
+              <strong>€{fmt(portfolioValue)}</strong>
+            </div>
+            <div className="stat-row">
+              <span><TermTooltip term="Trading P&L">Trading P&L</TermTooltip></span>
               <strong className={totalReturn >= 0 ? "pos" : "neg"}>
                 {totalReturn >= 0 ? "+" : ""}€{fmt(totalReturn)}
               </strong>
@@ -525,10 +646,16 @@ export default function TradingSimulator({ onNavigate }) {
                       <h4>My Position</h4>
                       <div className="pos-row">
                         <div className="pos-stat"><span>Shares Owned</span><strong>{myHolding.shares}</strong></div>
-                        <div className="pos-stat"><span>Avg Buy Price</span><strong>${fmt(myHolding.avgBuyPrice)}</strong></div>
-                        <div className="pos-stat"><span>Total Cost</span><strong>€{fmt(myHolding.avgBuyPrice * myHolding.shares)}</strong></div>
                         <div className="pos-stat">
-                          <span>Unrealised P&L</span>
+                          <span><TermTooltip term="Avg Buy">Avg Buy Price</TermTooltip></span>
+                          <strong>${fmt(myHolding.avgBuyPrice)}</strong>
+                        </div>
+                        <div className="pos-stat">
+                          <span><TermTooltip term="Total Cost">Total Cost</TermTooltip></span>
+                          <strong>€{fmt(myHolding.avgBuyPrice * myHolding.shares)}</strong>
+                        </div>
+                        <div className="pos-stat">
+                          <span><TermTooltip term="Unrealised P&L">Unrealised P&L</TermTooltip></span>
                           <strong className={(stock.price - myHolding.avgBuyPrice) >= 0 ? "pos" : "neg"}>
                             {(stock.price - myHolding.avgBuyPrice) >= 0 ? "+" : ""}€{fmt((stock.price - myHolding.avgBuyPrice) * myHolding.shares)}
                           </strong>
@@ -582,12 +709,38 @@ export default function TradingSimulator({ onNavigate }) {
           {/* ── PORTFOLIO ──────────────────────────────────────────────── */}
           {activeTab === "portfolio" && (
             <div className="tab-content">
+
+              {/* ── Price Drop Alerts ──────────────────────────────────── */}
+              {alerts.length > 0 && (
+                <div className="alerts-container">
+                  {alerts.map(a => (
+                    <div key={a.symbol} className="alert-banner">
+                      <span className="alert-icon">⚠️</span>
+                      <div className="alert-body">
+                        <span className="alert-title">{a.symbol} has dropped {a.dropPct}% below your buy price</span>
+                        <span className="alert-detail">
+                          Current price ${a.currentPrice.toFixed(2)} vs your avg buy of ${a.avgBuyPrice.toFixed(2)}
+                        </span>
+                      </div>
+                      <button className="alert-dismiss" onClick={() => dismissAlert(a.symbol)} aria-label="Dismiss">✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── Portfolio Summary Cards ────────────────────────────── */}
               <div className="port-summary">
                 <div className="ps-card"><span>Cash</span><strong>€{fmt(balance)}</strong></div>
-                <div className="ps-card"><span>Invested</span><strong>€{fmt(invested)}</strong></div>
-                <div className="ps-card"><span>Total Value</span><strong>€{fmt(portfolioValue)}</strong></div>
                 <div className="ps-card">
-                  <span>Trading P&L</span>
+                  <span><TermTooltip term="Invested">Invested</TermTooltip></span>
+                  <strong>€{fmt(invested)}</strong>
+                </div>
+                <div className="ps-card">
+                  <span><TermTooltip term="Total Value">Total Value</TermTooltip></span>
+                  <strong>€{fmt(portfolioValue)}</strong>
+                </div>
+                <div className="ps-card">
+                  <span><TermTooltip term="Trading P&L">Trading P&L</TermTooltip></span>
                   <strong className={totalReturn >= 0 ? "pos" : "neg"}>
                     {totalReturn >= 0 ? "+" : ""}€{fmt(totalReturn)} ({returnPct}%)
                   </strong>
@@ -606,7 +759,6 @@ export default function TradingSimulator({ onNavigate }) {
                   </div>
                   <span className="topup-chevron">{showTopup ? "▲" : "▼"}</span>
                 </div>
-
                 {showTopup && (
                   <div className="topup-body">
                     <p className="topup-current">Current balance: <strong>€{fmt(balance)}</strong></p>
@@ -640,7 +792,12 @@ export default function TradingSimulator({ onNavigate }) {
               ) : (
                 <table className="port-table">
                   <thead>
-                    <tr><th>Symbol</th><th>Shares</th><th>Avg Buy</th><th>Total Cost</th></tr>
+                    <tr>
+                      <th>Symbol</th>
+                      <th>Shares</th>
+                      <th><TermTooltip term="Avg Buy">Avg Buy</TermTooltip></th>
+                      <th><TermTooltip term="Total Cost">Total Cost</TermTooltip></th>
+                    </tr>
                   </thead>
                   <tbody>
                     {activeHoldings.map((h) => (

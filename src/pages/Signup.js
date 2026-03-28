@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import { auth, googleProvider, db } from "../firebase";
+import { auth, googleProvider, db } from "../services/firebase";
 import { createUserWithEmailAndPassword, signInWithPopup, signOut } from "firebase/auth";
 import logo from "../assets/images/logo.png";
 import { doc, setDoc } from "firebase/firestore";
 import "../css/Auth.css";
-import "../firebase";
+import "../services/firebase";
 
 export default function Signup({ onSignupSuccess, onGoogleLogin, onSwitchToLogin }) {
   const [email, setEmail] = useState("");
