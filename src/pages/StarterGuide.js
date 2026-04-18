@@ -7,11 +7,11 @@ import "../css/StarterGuide.css";
 import "../css/NavMenu.css";
 
 export default function StarterGuide({ onNavigate }) {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuOpen, setMenuOpen]                 = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [menuPhoto, setMenuPhoto] = useState(null);
-  const [menuAvatarColor, setMenuAvatarColor] = useState("#8fb9a8");
+  const [currentUser, setCurrentUser]           = useState(null);
+  const [menuPhoto, setMenuPhoto]               = useState(null);
+  const [menuAvatarColor, setMenuAvatarColor]   = useState("#8fb9a8");
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -23,58 +23,41 @@ export default function StarterGuide({ onNavigate }) {
             setMenuPhoto(snap.data().photoData || null);
             setMenuAvatarColor(snap.data().avatarColor || "#8fb9a8");
           }
-        } catch (e) { /* silent */ }
+        } catch (e) {}
       }
     });
     return () => unsubscribe();
   }, []);
 
-  const handleLogoutClick = () => {
-    setShowLogoutConfirm(true);
-    setMenuOpen(false);
-  };
-
+  const handleLogoutClick   = () => { setShowLogoutConfirm(true); setMenuOpen(false); };
+  const handleLogoutCancel  = () => setShowLogoutConfirm(false);
   const handleLogoutConfirm = async () => {
-    try {
-      await signOut(auth);
-      if (onNavigate) onNavigate("landing");
-    } catch (err) {
-      alert("Error logging out: " + err.message);
-    }
+    try { await signOut(auth); if (onNavigate) onNavigate("landing"); }
+    catch (err) { alert("Error logging out: " + err.message); }
   };
-
-  const handleLogoutCancel = () => {
-    setShowLogoutConfirm(false);
-  };
-
-  const handleMenuClick = (page) => {
-    setMenuOpen(false);
-    if (onNavigate) onNavigate(page);
-  };
+  const handleMenuClick = (page) => { setMenuOpen(false); if (onNavigate) onNavigate(page); };
 
   return (
-    <div className="starter-guide-container">
-      {/* Header */}
-      <header className="guide-header">
+    <div className="sg-container">
+      <header className="sg-header">
         <div className="hamburger-menu" onClick={() => setMenuOpen(!menuOpen)}>
-          <div className="line"></div>
-          <div className="line"></div>
-          <div className="line"></div>
+          <div className="line" /><div className="line" /><div className="line" />
         </div>
-        <div className="header-logo">
-          <h1>K.G</h1>
-          <p>Learn Trade Grow</p>
+        <div className="sg-header-logo">
+          <span className="sg-kg">K.G</span>
+          <span className="sg-logo-divider" />
+          <span className="sg-ltg">Learn Trade Grow</span>
         </div>
+        <button className="sg-header-btn" onClick={() => handleMenuClick("lessons")}>
+          Go to Lessons →
+        </button>
       </header>
 
-      {/* Mobile Menu */}
       {menuOpen && (
         <div className="mobile-menu">
           <div className="menu-user-info">
             <div className="menu-avatar" style={{ background: menuPhoto ? "transparent" : menuAvatarColor }}>
-              {menuPhoto
-                ? <img src={menuPhoto} alt="avatar" />
-                : <span>{(currentUser?.displayName?.[0] || currentUser?.email?.[0] || "U").toUpperCase()}</span>}
+              {menuPhoto ? <img src={menuPhoto} alt="avatar" /> : <span>{(currentUser?.displayName?.[0] || currentUser?.email?.[0] || "U").toUpperCase()}</span>}
             </div>
             <div className="menu-user-text">
               <p className="menu-user-name">{currentUser?.displayName || "Trader"}</p>
@@ -91,19 +74,10 @@ export default function StarterGuide({ onNavigate }) {
         </div>
       )}
 
-      {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (
         <div className="modal-overlay" onClick={handleLogoutCancel}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                <polyline points="16 17 21 12 16 7"></polyline>
-                <line x1="21" y1="12" x2="9" y2="12"></line>
-              </svg>
-            </div>
-            <h3>Logout Confirmation</h3>
-            <p>Are you sure you want to logout?</p>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <p>Are you sure you want to log out?</p>
             <div className="modal-buttons">
               <button className="cancel-btn" onClick={handleLogoutCancel}>Cancel</button>
               <button className="confirm-btn" onClick={handleLogoutConfirm}>Yes, Logout</button>
@@ -112,51 +86,57 @@ export default function StarterGuide({ onNavigate }) {
         </div>
       )}
 
-      {/* Main Content */}
-      <main className="guide-content">
-        <h2 className="welcome-title">Welcome</h2>
-        <h3 className="starter-title">Starter Guide</h3>
+      <div className="sg-hero">
+        <div className="sg-hero-inner">
+          <p className="sg-hero-label">Getting started</p>
+          <h1 className="sg-hero-title">Welcome to K.G</h1>
+          <p className="sg-hero-sub">Here is everything you need to know before you begin. The platform works in three stages: learn, test, then trade.</p>
+        </div>
+      </div>
 
-        {/* Section 1 */}
-        <section className="guide-section">
-          <h4>1. Learn with Interactive Lessons</h4>
-          <p>Our platform provides a series of beginner-friendly lessons.</p>
-          <p className="important-text">
-            <strong>Important:</strong> Lessons are unlocked in sequential order. You must complete each lesson and pass its quiz to unlock the next lesson. This ensures you build your knowledge step by step.
-          </p>
-        </section>
+      <main className="sg-main">
 
-        {/* Section 2 */}
-        <section className="guide-section">
-          <h4>2. Test Your Knowledge with Quizzes</h4>
-          <p>After completing each lesson, take the quiz to test your understanding.</p>
-          <ul>
-            <li>Passing the quiz unlocks the next lesson</li>
-            <li>Quiz results are automatically stored in your account</li>
-          </ul>
-        </section>
+        <div className="sg-step">
+          <div className="sg-step-num">01</div>
+          <div className="sg-step-body">
+            <h2>Work through the lessons</h2>
+            <p>There are eight lessons available, starting from the basics of the stock market and building up to more advanced trading strategies. They unlock one at a time, you need to complete a lesson and pass its quiz before the next one becomes available. This makes sure you actually understand each topic before moving on.</p>
+            <div className="sg-tip"><strong>Good to know:</strong> Lessons unlock in order. Each one builds on the last.</div>
+          </div>
+        </div>
 
-        {/* Section 3 */}
-        <section className="guide-section">
-          <h4>3. Practice with the Virtual Trading Simulator</h4>
-          <p>Use your virtual balance to buy and sell real-time stocks without risking real money.</p>
-          <ul>
-            <li>Track your portfolio and virtual profits/losses</li>
-            <li>Make trading decisions based on real market data</li>
-            <li>Gain practical experience while safely experimenting</li>
-          </ul>
-        </section>
+        <div className="sg-step">
+          <div className="sg-step-num">02</div>
+          <div className="sg-step-body">
+            <h2>Pass the quiz to progress</h2>
+            <p>After each lesson you will be given a quiz. Ten questions are selected at random from a pool of fifteen, so the questions will be different each time you attempt it. You need to score 70% or above to unlock the next lesson. If you do not pass, you can go back through the lesson and try again.</p>
+            <div className="sg-tip"><strong>Good to know:</strong> After finishing a quiz you can review it to see which questions you got right or wrong with an explanation for each one.</div>
+          </div>
+        </div>
 
-        {/* Section 4 */}
-        <section className="guide-section">
-          <h4>4. Track Your Progress</h4>
-          <p>Your personal dashboard shows:</p>
-          <ul>
-            <li>Completed lessons and quiz scores</li>
-            <li>Virtual portfolio performance</li>
-            <li>Learning and trading milestones</li>
-          </ul>
-        </section>
+        <div className="sg-step">
+          <div className="sg-step-num">03</div>
+          <div className="sg-step-body">
+            <h2>Practice in the trading simulator</h2>
+            <p>Once you have worked through the lessons, you can apply what you have learned in the trading simulator. You start with €10,000 of virtual funds and can search for any US-listed stock, view a live 90-day price chart and place buy and sell orders. Everything is powered by real market data, but there is no real money involved, so you can practise freely without any financial risk.</p>
+            <div className="sg-tip"><strong>Good to know:</strong> Your portfolio, transaction history and balance are all saved to your account so you can pick up where you left off.</div>
+          </div>
+        </div>
+
+        <div className="sg-step">
+          <div className="sg-step-num">04</div>
+          <div className="sg-step-body">
+            <h2>Track your progress</h2>
+            <p>Your lessons page always shows where you are across all eight lessons. Your portfolio tab in the simulator shows your current holdings, virtual balance, total return and every trade you have made.</p>
+          </div>
+        </div>
+
+        <div className="sg-cta">
+          <button className="sg-cta-btn" onClick={() => handleMenuClick("lessons")}>
+            Start First Lesson →
+          </button>
+        </div>
+
       </main>
     </div>
   );
