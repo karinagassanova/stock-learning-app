@@ -13,7 +13,9 @@ import {
 } from "recharts";
 import { fetchSnapshot, fetchBars } from "../services/alpaca";
 import "../css/TradingSimulator.css";
+import "../css/PageHeader.css";
 import "../css/NavMenu.css";
+import "../css/PageHeader.css";
 
 const STARTING_BALANCE = 10000;
 const TOPUP_AMOUNTS = [1000, 2500, 5000, 10000];
@@ -44,7 +46,7 @@ const TERM_DEFS = {
   "Unrealised P&L": "The gain or loss on this position based on the current live price versus what you paid. It is unrealised because you have not sold yet.",
 };
 
-// ── TermTooltip ─────────
+// ── TermTooltip — portal-based, never clipped by any parent overflow ─────────
 function TermTooltip({ term, children }) {
   const [coords, setCoords] = useState(null);
   const triggerRef          = useRef(null);
@@ -417,22 +419,25 @@ export default function TradingSimulator({ onNavigate }) {
     <div className="sim-wrap">
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
-      <header className="sim-header">
+      <header className="app-header sim-header">
         <div className="hamburger-menu" onClick={() => setMenuOpen(!menuOpen)}>
           <div className="line"></div>
           <div className="line"></div>
           <div className="line"></div>
         </div>
-        <div className="header-logo">
-          <h1>K.G</h1>
-          <p>Learn Trade Grow</p>
+        <div className="app-header-logo">
+          <span className="app-kg">K.G</span>
+          <span className="app-divider" />
+          <span className="app-ltg">Learn Trade Grow</span>
         </div>
-        <div className="header-balance">
-          <span className="hb-label">Portfolio</span>
-          <span className="hb-value">€{fmt(portfolioValue)}</span>
-          <span className={`hb-return ${totalReturn >= 0 ? "pos" : "neg"}`}>
-            {totalReturn >= 0 ? "▲" : "▼"} {Math.abs(returnPct)}%
-          </span>
+        <div className="app-header-right">
+          <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
+            <span className="app-portfolio-label">Portfolio</span>
+            <span className="app-portfolio-value">€{fmt(portfolioValue)}</span>
+            <span className={`app-portfolio-return ${totalReturn >= 0 ? "pos" : "neg"}`}>
+              {totalReturn >= 0 ? "▲" : "▼"} {Math.abs(returnPct)}%
+            </span>
+          </div>
         </div>
       </header>
 

@@ -1,176 +1,124 @@
-.hamburger-menu {
-    cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    padding: 4px;
-    flex-shrink: 0;
-  }
-  .line {
-    width: 22px;
-    height: 2px;
-    background: white;
-    border-radius: 2px;
-  }
+.mobile-menu {
+  position: fixed;
+  top: 60px; left: 0;
+  width: 260px;
+  height: calc(100vh - 60px);
+  background: white;
+  border-right: 1px solid #dceee5;
+  box-shadow: 4px 0 24px rgba(45,107,80,0.1);
+  z-index: 200;
+  display: flex; flex-direction: column;
+  animation: menuSlide 0.22s ease;
+  overflow-y: auto;
+}
+@keyframes menuSlide {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
 
-  .mobile-menu {
-    position: absolute;
-    top: 56px;    
-    left: 0;
-    width: 240px;
-    background: white;
-    border-right: 1px solid #e0e0e0;
-    border-bottom: 1px solid #e0e0e0;
-    border-radius: 0 0 12px 0;
-    box-shadow: 4px 4px 16px rgba(0, 0, 0, 0.13);
-    z-index: 200;
-    animation: menuSlide 0.2s ease;
-  }
-  @keyframes menuSlide {
-    from { opacity: 0; transform: translateY(-8px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
+.menu-user-info {
+  display: flex; align-items: center; gap: 12px;
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid #eef6f1;
+  background: white;
+  flex-shrink: 0;
+}
+.menu-avatar {
+  width: 42px; height: 42px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; overflow: hidden;
+  font-weight: 800; font-size: 1.1rem; color: white;
+  border: 2px solid #dceee5;
+}
+.menu-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.menu-avatar span { line-height: 1; }
+.menu-user-text { overflow: hidden; flex: 1; }
+.menu-user-name  {
+  font-size: 0.88rem; font-weight: 700; color: #1c2b22;
+  margin: 0 0 3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.menu-user-email {
+  font-size: 0.72rem; color: #8a9a90; margin: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 
-  .menu-user-info {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 18px;
-    border-bottom: 1px solid #f0f0f0;
-    background: #fafcfe;
-  }
-  .menu-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: #8fb9a8;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    overflow: hidden;
-    font-weight: 800;
-    font-size: 1rem;
-    color: white;
-  }
-  .menu-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 50%;
-  }
-  .menu-avatar span {
-    line-height: 1;
-  }
-  .menu-user-text {
-    overflow: hidden;
-    flex: 1;
-  }
-  .menu-user-name {
-    font-size: 0.88rem;
-    font-weight: 700;
-    color: #1a2b3c;
-    margin: 0 0 2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .menu-user-email {
-    font-size: 0.72rem;
-    color: #999;
-    margin: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
+.mobile-menu ul {
+  list-style: none; padding: 10px 0; margin: 0; flex: 1;
+}
+.mobile-menu ul li {
+  display: flex; align-items: center;
+  padding: 13px 22px;
+  cursor: pointer;
+  font-size: 0.93rem; font-weight: 500;
+  font-family: Arial, sans-serif;
+  color: #3d5448;
+  transition: background 0.15s, color 0.15s;
+  border-left: 3px solid transparent;
+  letter-spacing: 0.1px;
+}
+.mobile-menu ul li:hover {
+  background: #f0f7f4;
+  color: #2d6b50;
+  border-left-color: #c8ddd2;
+}
+.mobile-menu ul li.active {
+  color: #2d6b50; font-weight: 700;
+  border-left-color: #2d6b50;
+  background: #eef6f1;
+}
+/* Logout item */
+.mobile-menu ul li:last-child {
+  color: #c0392b; margin-top: auto; border-top: 1px solid #eef6f1;
+}
+.mobile-menu ul li:last-child:hover { background: #fff5f5; color: #c0392b; border-left-color: #f5a0a0; }
 
-  .mobile-menu ul {
-    list-style: none;
-    padding: 8px 0;
-    margin: 0;
-  }
-  .mobile-menu ul li {
-    padding: 13px 20px;
-    cursor: pointer;
-    font-size: 0.93rem;
-    font-family: Arial, sans-serif;
-    color: #444;
-    transition: background 0.15s, color 0.15s;
-    border-left: 3px solid transparent;
-  }
-  .mobile-menu ul li:hover {
-    background: #f5f9f7;
-    color: #8fb9a8;
-  }
-  .mobile-menu ul li.active {
-    color: #8fb9a8;
-    font-weight: 700;
-    border-left-color: #8fb9a8;
-    background: #f0f7f4;
-  }
+/* ── Modals ── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(28,43,34,0.45);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 300;
+  animation: fadeIn 0.15s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 300;
-  }
-  .modal-content {
-    background: white;
-    border-radius: 16px;
-    padding: 32px 28px;
-    max-width: 340px;
-    width: 90%;
-    text-align: center;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
-  }
-  .modal-icon {
-    margin-bottom: 16px;
-  }
-  .modal-icon svg {
-    width: 44px;
-    height: 44px;
-    stroke: #8fb9a8;
-  }
-  .modal-content h3 {
-    margin: 0 0 8px;
-    font-size: 1.1rem;
-    color: #1a2b3c;
-  }
-  .modal-content p {
-    margin: 0 0 24px;
-    color: #888;
-    font-size: 0.9rem;
-  }
-  .modal-buttons {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-  }
-  .cancel-btn {
-    padding: 10px 24px;
-    border-radius: 8px;
-    border: 2px solid #ddd;
-    background: white;
-    color: #666;
-    font-weight: 700;
-    cursor: pointer;
-    font-size: 0.9rem;
-    transition: all 0.2s;
-  }
-  .cancel-btn:hover { border-color: #aaa; }
-  .confirm-btn {
-    padding: 10px 24px;
-    border-radius: 8px;
-    border: none;
-    background: #e74c3c;
-    color: white;
-    font-weight: 700;
-    cursor: pointer;
-    font-size: 0.9rem;
-    transition: background 0.2s;
-  }
-  .confirm-btn:hover { background: #c0392b; }
+.modal-box,
+.modal-content {
+  background: white; border-radius: 14px;
+  padding: 30px 28px; max-width: 340px; width: 90%;
+  text-align: center;
+  box-shadow: 0 8px 40px rgba(28,43,34,0.18);
+  animation: modalIn 0.18s ease;
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.modal-icon { margin-bottom: 14px; }
+.modal-icon svg { width: 40px; height: 40px; stroke: #8fb9a8; }
+.modal-content h3, .modal-box h3 {
+  margin: 0 0 8px; font-size: 1.05rem; color: #1c2b22;
+  font-family: Georgia, serif; font-weight: 700;
+}
+.modal-content p, .modal-box p {
+  margin: 0 0 22px; color: #6a8a78; font-size: 0.9rem; line-height: 1.55;
+}
+.modal-buttons { display: flex; gap: 10px; justify-content: center; }
+
+.cancel-btn {
+  padding: 10px 22px; border-radius: 8px;
+  border: 1.5px solid #dceee5; background: white;
+  color: #4a6050; font-weight: 600; cursor: pointer;
+  font-size: 0.88rem; transition: all 0.2s;
+}
+.cancel-btn:hover { border-color: #8fb9a8; background: #f0f7f4; color: #2d6b50; }
+
+.confirm-btn {
+  padding: 10px 22px; border-radius: 8px;
+  border: none; background: #e74c3c;
+  color: white; font-weight: 700; cursor: pointer;
+  font-size: 0.88rem; transition: background 0.2s;
+}
+.confirm-btn:hover { background: #c0392b; }

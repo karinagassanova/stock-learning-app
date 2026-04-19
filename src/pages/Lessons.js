@@ -6,7 +6,9 @@ import { lessonsData } from "../data/lessonsData";
 import LessonView from "./LessonView";
 import Quiz from "./Quiz";
 import "../css/Lessons.css";
+import "../css/PageHeader.css";
 import "../css/NavMenu.css";
+import "../css/PageHeader.css";
 
 const LESSON_LIST = [
   { id: 1, title: "Introduction to the Stock Market", description: "Understand what stocks are, how the market works, and why people invest", difficulty: "Beginner", duration: "20 min" },
@@ -135,16 +137,18 @@ export default function Lessons({ onNavigate }) {
 
   return (
     <div className="lessons-container">
-      <header className="lessons-header">
+      <header className="app-header">
         <div className="hamburger-menu" onClick={() => setMenuOpen(!menuOpen)}>
           <div className="line"></div>
           <div className="line"></div>
           <div className="line"></div>
         </div>
-        <div className="header-logo">
-          <h1>K.G</h1>
-          <p>Learn Trade Grow</p>
+        <div className="app-header-logo">
+          <span className="app-kg">K.G</span>
+          <span className="app-divider" />
+          <span className="app-ltg">Learn Trade Grow</span>
         </div>
+        <div className="app-header-right"></div>
       </header>
 
       {menuOpen && (

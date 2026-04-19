@@ -5,6 +5,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import "../css/StarterGuide.css";
 import "../css/NavMenu.css";
+import "../css/PageHeader.css";
 
 export default function StarterGuide({ onNavigate }) {
   const [menuOpen, setMenuOpen]                 = useState(false);
@@ -39,18 +40,16 @@ export default function StarterGuide({ onNavigate }) {
 
   return (
     <div className="sg-container">
-      <header className="sg-header">
+      <header className="app-header">
         <div className="hamburger-menu" onClick={() => setMenuOpen(!menuOpen)}>
           <div className="line" /><div className="line" /><div className="line" />
         </div>
-        <div className="sg-header-logo">
-          <span className="sg-kg">K.G</span>
-          <span className="sg-logo-divider" />
-          <span className="sg-ltg">Learn Trade Grow</span>
+        <div className="app-header-logo">
+          <span className="app-kg">K.G</span>
+          <span className="app-divider" />
+          <span className="app-ltg">Learn Trade Grow</span>
         </div>
-        <button className="sg-header-btn" onClick={() => handleMenuClick("lessons")}>
-          Go to Lessons →
-        </button>
+        <div className="app-header-right"><button className="sg-header-btn" onClick={() => handleMenuClick("lessons")}>Go to Lessons →</button></div>
       </header>
 
       {menuOpen && (
@@ -90,7 +89,7 @@ export default function StarterGuide({ onNavigate }) {
         <div className="sg-hero-inner">
           <p className="sg-hero-label">Getting started</p>
           <h1 className="sg-hero-title">Welcome to K.G</h1>
-          <p className="sg-hero-sub">Here is everything you need to know before you begin. The platform works in three stages: learn, test, then trade.</p>
+          <p className="sg-hero-sub">Here is everything you need to know before you begin. The platform works in three stages; learn, test, then trade.</p>
         </div>
       </div>
 

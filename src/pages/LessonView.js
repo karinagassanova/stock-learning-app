@@ -3,7 +3,9 @@ import { auth, db } from "../services/firebase";
 import { signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import "../css/LessonView.css";
+import "../css/PageHeader.css";
 import "../css/NavMenu.css";
+import "../css/PageHeader.css";
 import Quiz from "./Quiz";
 
 export default function LessonView({ lesson, onBack, onNavigate }) {
@@ -58,16 +60,18 @@ export default function LessonView({ lesson, onBack, onNavigate }) {
 
   return (
     <div className="lesson-view-container">
-      <header className="lesson-header">
+      <header className="app-header">
         <div className="hamburger-menu" onClick={() => setMenuOpen(!menuOpen)}>
           <div className="line"></div>
           <div className="line"></div>
           <div className="line"></div>
         </div>
-        <div className="header-logo">
-          <h1>K.G</h1>
-          <p>Learn Trade Grow</p>
+        <div className="app-header-logo">
+          <span className="app-kg">K.G</span>
+          <span className="app-divider" />
+          <span className="app-ltg">Learn Trade Grow</span>
         </div>
+        <div className="app-header-right"></div>
       </header>
 
       {menuOpen && (

@@ -3,7 +3,9 @@ import { auth, db } from "../services/firebase";
 import { onAuthStateChanged, signOut, updateProfile } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import "../css/Profile.css";
+import "../css/PageHeader.css";
 import "../css/NavMenu.css";
+import "../css/PageHeader.css";
 
 const AVATAR_COLORS = [
   "#1a3c5e", "#8fb9a8", "#2ecc71", "#e74c3c",
@@ -75,7 +77,7 @@ export default function Profile({ onNavigate }) {
     try {
       const newName = displayName.trim() || user.email.split("@")[0];
 
-      // Only update displayName in Firebase Auth, NOT photoURL (base64 is too long)
+      // Only update displayName in Firebase Auth — NOT photoURL (base64 is too long)
       await updateProfile(user, { displayName: newName });
 
       // Store everything (including base64 photo) in Firestore only
@@ -121,13 +123,18 @@ export default function Profile({ onNavigate }) {
     <div className="profile-wrap">
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
-      <header className="profile-header">
+      <header className="app-header">
         <div className="hamburger-menu" onClick={() => setMenuOpen(!menuOpen)}>
           <div className="line"></div>
           <div className="line"></div>
           <div className="line"></div>
         </div>
-        <div className="header-logo"><h1>K.G</h1><p>Learn Trade Grow</p></div>
+        <div className="app-header-logo">
+          <span className="app-kg">K.G</span>
+          <span className="app-divider" />
+          <span className="app-ltg">Learn Trade Grow</span>
+        </div>
+        <div className="app-header-right"></div>
       </header>
 
       {/* ── Mobile Menu ────────────────────────────────────────────────── */}
