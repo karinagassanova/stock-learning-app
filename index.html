@@ -155,7 +155,8 @@ nav {
 .links-section {
   position: relative; z-index: 1;
   padding: 72px 24px 80px;
-  max-width: 900px; margin: 0 auto;
+  max-width: 1000px; /* Increased to allow cards to spread */
+  margin: 0 auto;
 }
 .section-label {
   text-align: center;
@@ -172,8 +173,9 @@ nav {
 
 .cards-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr); max-width: 640px; margin: 0 auto;
-  gap: 18px;
+  /* Updated grid-template for better spreading */
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
 }
 
 .link-card {
@@ -185,6 +187,7 @@ nav {
   display: flex; flex-direction: column; align-items: flex-start; gap: 14px;
   transition: all 0.22s;
   position: relative; overflow: hidden;
+  height: 100%;
 }
 .link-card::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
@@ -251,7 +254,6 @@ footer strong { color: rgba(255,255,255,0.85); font-weight: 600; }
 </head>
 <body>
 
-<!-- NAV -->
 <nav>
   <div class="nav-logo">K<span>.</span>G</div>
   <div class="nav-links">
@@ -260,7 +262,6 @@ footer strong { color: rgba(255,255,255,0.85); font-weight: 600; }
   </div>
 </nav>
 
-<!-- HERO -->
 <section class="hero">
   <div class="hero-inner">
     <div class="hero-badge">
@@ -276,7 +277,7 @@ footer strong { color: rgba(255,255,255,0.85); font-weight: 600; }
     <p class="hero-desc">
       A full-stack web application designed to teach users the fundamentals of investing
       through structured lessons, adaptive quizzes and a real-time trading simulator
-      powered by live market data.
+      powered by live market data[cite: 366, 367].
     </p>
 
     <div class="hero-meta">
@@ -298,47 +299,43 @@ footer strong { color: rgba(255,255,255,0.85); font-weight: 600; }
 
 <div class="divider"></div>
 
-<!-- LINKS SECTION -->
 <section class="links-section" id="links">
-  <p class="section-label">Project Deliverables</p>
-  <h2 class="section-title">Everything in one place</h2>
+  <p class="section-label">Project Deliverables</p>
+  <h2 class="section-title">Everything in one place</h2>
 
-  <div class="cards-grid">
-
+  <div class="cards-grid">
     <a href="https://youtu.be/58belLkv2kU" target="_blank" class="link-card">
-      <div class="link-card-icon">🎬</div>
-      <h3>Video Demonstration</h3>
-      <p>A full walkthrough of the platform, demonstrating the 8-lesson learning system and the real-time trading simulator.</p>
-      <div class="link-card-arrow">Watch Demo →</div>
-    </a>
+      <div class="link-card-icon">🎬</div>
+      <h3>Video Demonstration</h3>
+      <p>A full walkthrough of the platform, demonstrating the learning system and the virtual playground trading simulator[cite: 370, 371].</p>
+      <div class="link-card-arrow">Watch Demo →</div>
+    </a>
 
     <a href="https://karinagassanova.github.io/stock-learning-app/FYP%20Semester%202%20Report.docx" target="_blank" class="link-card">
-      <div class="link-card-icon">📄</div>
-      <h3>Final Project Report</h3>
-      <p>Comprehensive technical documentation covering system architecture, database design, and Agile sprint logs.</p>
-      <div class="link-card-arrow">Read Report →</div>
-    </a>
+      <div class="link-card-icon">📄</div>
+      <h3>Final Project Report</h3>
+      <p>Full technical documentation covering the system architecture, database design, and sprint documentation[cite: 35, 41].</p>
+      <div class="link-card-arrow">Read Report →</div>
+    </a>
 
-    <a href="https://karinagassanova.github.io/stock-learning-app/fyp%20poster.png" target="_blank" class="link-card">
-      <div class="link-card-icon">🪧</div>
-      <h3>Project Poster</h3>
-      <p>A1 research poster covering the system architecture, key features, methodology and technology stack.</p>
-      <div class="link-card-arrow">View Poster →</div>
-    </a>
+    <a href="https://karinagassanova.github.io/stock-learning-app/fyp%20poster.png" target="_blank" class="link-card">
+      <div class="link-card-icon">🪧</div>
+      <h3>Project Poster</h3>
+      <p>A1 research poster covering the system architecture, key features, methodology and technology stack.</p>
+      <div class="link-card-arrow">View Poster →</div>
+    </a>
 
-    <a href="https://github.com/karinagassanova/stock-learning-app" target="_blank" class="link-card">
-      <div class="link-card-icon">💻</div>
-      <h3>GitHub Repository</h3>
-      <p>Full source code including all React components, Firebase configuration and Alpaca API integration.</p>
-      <div class="link-card-arrow">View Code →</div>
-    </a>
-
-  </div>
+    <a href="https://github.com/karinagassanova/stock-learning-app" target="_blank" class="link-card">
+      <div class="link-card-icon">💻</div>
+      <h3>GitHub Repository</h3>
+      <p>Full source code including all React components, Firebase configuration and Alpaca API integration[cite: 197, 199].</p>
+      <div class="link-card-arrow">View Code →</div>
+    </a>
+  </div>
 </section>
 
 <div class="divider"></div>
 
-<!-- ABOUT -->
 <section class="about-section" id="about">
   <div class="about-inner">
     <p class="section-label">About the Project</p>
@@ -346,8 +343,8 @@ footer strong { color: rgba(255,255,255,0.85); font-weight: 600; }
     <p class="about-desc">
       An interactive web platform built to help users develop real investment knowledge.
       Eight structured lessons guide users from stock market basics to advanced trading strategies,
-      each gated by a quiz with a 70% pass mark. Users then apply their knowledge in a simulator
-      using live Alpaca Markets data, trading €10,000 of virtual funds in a risk-free environment.
+      each gated by a quiz with a 70% pass mark[cite: 195]. Users apply their knowledge in a simulator
+      using live Alpaca Markets data, trading with virtual funds in a risk-free environment[cite: 197, 198].
     </p>
     <div class="tech-pills">
       <span class="pill">React</span>
@@ -362,7 +359,6 @@ footer strong { color: rgba(255,255,255,0.85); font-weight: 600; }
   </div>
 </section>
 
-<!-- FOOTER -->
 <footer>
   <div class="footer-logo">K.G</div>
   <p><strong>Karine Gassanova</strong> &nbsp;·&nbsp; BSc (Hons) in Software Systems Development &nbsp;·&nbsp; SETU 2026</p>
