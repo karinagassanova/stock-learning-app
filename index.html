@@ -155,7 +155,7 @@ nav {
 .links-section {
   position: relative; z-index: 1;
   padding: 72px 24px 80px;
-  max-width: 1000px; /* Increased to allow cards to spread */
+  max-width: 1000px;
   margin: 0 auto;
 }
 .section-label {
@@ -173,8 +173,7 @@ nav {
 
 .cards-grid {
   display: grid;
-  /* Updated grid-template for better spreading */
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 20px;
 }
 
@@ -277,7 +276,7 @@ footer strong { color: rgba(255,255,255,0.85); font-weight: 600; }
     <p class="hero-desc">
       A full-stack web application designed to teach users the fundamentals of investing
       through structured lessons, adaptive quizzes and a real-time trading simulator
-      powered by live market data[cite: 366, 367].
+      powered by live market data.
     </p>
 
     <div class="hero-meta">
@@ -307,28 +306,28 @@ footer strong { color: rgba(255,255,255,0.85); font-weight: 600; }
     <a href="https://youtu.be/58belLkv2kU" target="_blank" class="link-card">
       <div class="link-card-icon">🎬</div>
       <h3>Video Demonstration</h3>
-      <p>A full walkthrough of the platform, demonstrating the learning system and the virtual playground trading simulator[cite: 370, 371].</p>
+      <p>A full walkthrough of the platform, demonstrating the learning system and the virtual trading simulator.</p>
       <div class="link-card-arrow">Watch Demo →</div>
     </a>
 
     <a href="https://karinagassanova.github.io/stock-learning-app/FYP%20Semester%202%20Report.docx" target="_blank" class="link-card">
       <div class="link-card-icon">📄</div>
       <h3>Final Project Report</h3>
-      <p>Full technical documentation covering the system architecture, database design, and sprint documentation[cite: 35, 41].</p>
+      <p>Comprehensive technical documentation covering system architecture, database design, and sprint logs.</p>
       <div class="link-card-arrow">Read Report →</div>
     </a>
 
     <a href="https://karinagassanova.github.io/stock-learning-app/fyp%20poster.png" target="_blank" class="link-card">
       <div class="link-card-icon">🪧</div>
       <h3>Project Poster</h3>
-      <p>A1 research poster covering the system architecture, key features, methodology and technology stack.</p>
+      <p>A1 research poster covering the system architecture, key features, and technology stack.</p>
       <div class="link-card-arrow">View Poster →</div>
     </a>
 
     <a href="https://github.com/karinagassanova/stock-learning-app" target="_blank" class="link-card">
       <div class="link-card-icon">💻</div>
       <h3>GitHub Repository</h3>
-      <p>Full source code including all React components, Firebase configuration and Alpaca API integration[cite: 197, 199].</p>
+      <p>Full source code including all React components, Firebase configuration and Alpaca API integration.</p>
       <div class="link-card-arrow">View Code →</div>
     </a>
   </div>
@@ -343,8 +342,8 @@ footer strong { color: rgba(255,255,255,0.85); font-weight: 600; }
     <p class="about-desc">
       An interactive web platform built to help users develop real investment knowledge.
       Eight structured lessons guide users from stock market basics to advanced trading strategies,
-      each gated by a quiz with a 70% pass mark[cite: 195]. Users apply their knowledge in a simulator
-      using live Alpaca Markets data, trading with virtual funds in a risk-free environment[cite: 197, 198].
+      each gated by a quiz with a 70% pass mark. Users then apply their knowledge in a simulator
+      using live Alpaca Markets data, trading virtual funds in a risk-free environment.
     </p>
     <div class="tech-pills">
       <span class="pill">React</span>
